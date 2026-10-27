@@ -1,284 +1,653 @@
-# 🎓 AI-Powered Interview Preparation System
+<div align="center">
 
-A full-stack, machine learning-driven web application designed to help computer science students and software engineering candidates systematically assess their technical skills, diagnose knowledge gaps, receive personalized study roadmaps, practice curated interview questions, and predict their technical interview readiness using a **Scikit-learn Decision Tree Classifier**.
+# 🎓 AI-Powered Technical Interview Preparation System
+### *An Intelligent Academic Platform for Technical Skill Assessment, Diagnostic Analytics, Personalized Roadmaps, and ML-Based Interview Readiness Prediction*
+
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Scikit-Learn](https://img.shields.io/badge/scikit--learn-Decision%20Trees-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-PyMongo-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Tests: Pytest](https://img.shields.io/badge/Tests-17%20Passed-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](https://pytest.org/)
+
+</div>
 
 ---
 
 ## 📑 Table of Contents
 
-- [1. Project Overview](#1-project-overview)
-- [2. System Architecture](#2-system-architecture)
-- [3. Key Features](#3-key-features)
-- [4. Technology Stack](#4-technology-stack)
-- [5. Project Folder Structure](#5-project-folder-structure)
-- [6. Database Architecture (MongoDB)](#6-database-architecture-mongodb)
-- [7. Machine Learning Methodology](#7-machine-learning-methodology)
-- [8. Installation & Setup Guide](#8-installation--setup-guide)
-- [9. Running the Application](#9-running-the-application)
-- [10. Running the Test Suite](#10-running-the-test-suite)
-- [11. Troubleshooting & FAQs](#11-troubleshooting--faqs)
+1. [Executive Summary](#1-executive-summary)
+2. [Problem Statement & Academic Objectives](#2-problem-statement--academic-objectives)
+3. [End-to-End System Architecture](#3-end-to-end-system-architecture)
+4. [Technology Stack](#4-technology-stack)
+5. [Application Modules & User Interface](#5-application-modules--user-interface)
+6. [Machine Learning Pipeline](#6-machine-learning-pipeline)
+   - [Model Architecture & Hyperparameters](#model-architecture--hyperparameters)
+   - [Feature Engineering & Formulation](#feature-engineering--formulation)
+   - [Synthetic Training Data Generation](#synthetic-training-data-generation)
+   - [Model Evaluation & Confusion Matrix](#model-evaluation--confusion-matrix)
+   - [Academic Disclaimer & Ethical AI](#academic-disclaimer--ethical-ai)
+7. [Database Architecture & MongoDB Schema](#7-database-architecture--mongodb-schema)
+   - [Collection Specifications](#collection-specifications)
+   - [Indexing Strategies](#indexing-strategies)
+   - [Fault-Tolerant Mock Fallback](#fault-tolerant-mock-fallback)
+8. [Directory Structure](#8-directory-structure)
+9. [Installation & Setup Instructions](#9-installation--setup-instructions)
+10. [Execution Guide](#10-execution-guide)
+11. [Automated Test Suite](#11-automated-test-suite)
+12. [Troubleshooting & Windows Security Guidelines](#12-troubleshooting--windows-security-guidelines)
+13. [Contributing Guidelines](#13-contributing-guidelines)
+14. [License](#14-license)
+15. [Copyright & Intellectual Property](#15-copyright--intellectual-property)
 
 ---
 
-## 1. Project Overview
+## 1. Executive Summary
 
-Preparing for technical interviews requires mastering multiple computer science disciplines simultaneously. This platform replaces fragmented interview prep by providing an integrated, data-driven cycle:
+The **AI-Powered Technical Interview Preparation System** is a production-grade, academic software engineering and machine learning platform. It automates technical skill gap analysis and interview coaching for computer science and software engineering students. 
 
-1. **Self-Assessment:** Students self-rate proficiency across 10 core technical domains.
-2. **Diagnostic Analytics:** The system automatically identifies highest and lowest scoring areas, flags weak topics (< 50%), and compares performance against previous attempts.
-3. **Machine Learning Readiness Prediction:** A trained Scikit-learn Decision Tree assesses whether the student is *"Interview Ready"*, *"Intermediate / Partially Ready"*, or *"Beginner / Needs Improvement"*, detailing the exact feature importances influencing the prediction.
-4. **Targeted Question Practice:** Curated questions are dynamically retrieved from MongoDB based on domain, difficulty, and question type with self-rating tracking.
-5. **Personalized Study Roadmap:** A prioritized learning plan is generated targeting the student's weakest subjects with concrete concepts, exercises, and mini-project recommendations.
+Traditional interview preparation is often unguided, leading students to solve arbitrary coding puzzles without identifying their actual domain deficiencies. This platform solves this challenge by establishing an end-to-end diagnostic workflow: students complete standardized technical assessments across 10 core computer science disciplines, receive automatic strength and weakness classification, view personalized study roadmaps, practice curated questions retrieved dynamically from **MongoDB**, and receive an empirical readiness forecast generated by a trained **Scikit-learn Decision Tree Classifier**.
 
 ---
 
-## 2. System Architecture
+## 2. Problem Statement & Academic Objectives
+
+### The Problem
+- **Cognitive Overload:** Students lack clear visibility into which foundational subjects (e.g., Operating Systems, DBMS, Networking) hinder their interview success compared to algorithmic problem-solving.
+- **Static Advice:** Most interview repositories present monolithic question lists without adapting to the candidate's target job role or current competence.
+- **Subjective Readiness:** Candidates guess whether they are ready for technical interviews, leading to premature rejections or interview anxiety.
+
+### Core Academic Objectives
+1. **Multi-Discipline Assessment:** Evaluate students across 10 foundational computer science topics on a normalized 0–100 scale.
+2. **Empirical Topic Diagnosis:** Categorize competencies into **Strong** ($\ge 80\%$), **Moderate** ($50\%\text{--}79\%$), and **Weak** ($< 50\%$) using configurable classification thresholds.
+3. **Machine Learning-Driven Readiness Prediction:** Deploy a supervised **Decision Tree Classifier** that outputs a classified readiness tier, confidence score, and feature importance explanations.
+4. **Targeted Roadmapping:** Synthesize identified weak areas into step-by-step learning roadmaps with hands-on coding tasks, mini-projects, and persistent progress tracking.
+5. **Robust Database Architecture:** Transition entirely away from flat-file storage to an indexed **MongoDB** document database.
+6. **Academic Rigor & Transparency:** Explicitly document all synthetic training assumptions, avoiding black-box claims or fabricated metrics.
+
+---
+
+## 3. End-to-End System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 Streamlit Web UI / Dashboard                │
-│  (Home | Profile | Assessment | Analysis | Questions | ML)  │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-            ┌──────────────────┴──────────────────┐
-            ▼                                     ▼
-┌───────────────────────────┐         ┌───────────────────────────┐
-│     Business Modules      │         │   Machine Learning (ML)   │
-│  - Profile Management     │         │  - Decision Tree Classifier│
-│  - Metric Calculations    │         │  - Inference & Explainers │
-│  - Roadmap Generator      │         │  - Evaluation & Metrics   │
-└─────────────┬─────────────┘         └─────────────┬─────────────┘
-              │                                     │
-              ▼                                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Data Layer & Persistence                  │
-│       MongoDB / PyMongo (Fallback: In-Memory Mock)          │
-│ Collections: students, assessments, questions, predictions  │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 PRESENTATION LAYER                                     │
+│                            Streamlit Multi-Page Web App                                │
+│   ┌──────────────┬──────────────┬──────────────┬──────────────┬───────────────────┐    │
+│   │ Home Dash    │ Student Prof │ Skill Assmt  │ Topic Diag   │ Question Practice │    │
+│   ├──────────────┼──────────────┼──────────────┼──────────────┼───────────────────┤    │
+│   │ Learning Map │ ML Predictor │ Analytics    │ History      │ Question Admin    │    │
+│   └──────────────┴──────────────┴──────────────┴──────────────┴───────────────────┘    │
+└───────────────────────────────────────────┬────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  LOGIC & UTILITY LAYER                                 │
+│  ┌───────────────────────┬───────────────────────┬──────────────────────────────────┐  │
+│  │     Validators        │        Helpers        │         Session Manager          │  │
+│  │ (Email, Scores, Qs)   │  (Thresholds, Stats)  │    (Student State, Caching)      │  │
+│  └───────────────────────┴───────────────────────┴──────────────────────────────────┘  │
+└─────────────────────┬───────────────────────────────────────────┬──────────────────────┘
+                      │                                           │
+                      ▼                                           ▼
+┌───────────────────────────────────────────┐   ┌────────────────────────────────────────┐
+│          MACHINE LEARNING LAYER           │   │             DATA ACCESS LAYER          │
+│   ┌───────────────────────────────────┐   │   │   ┌────────────────────────────────┐   │
+│   │  DecisionTreeClassifier (CART)    │   │   │   │  PyMongo Client Pool           │   │
+│   │  - Max Depth: 6                   │   │   │   │  - Server Timeout: 2000ms      │   │
+│   │  - Min Samples Leaf: 6            │   │   │   │  - Auto-Index Initialization   │   │
+│   │  - Criterion: Gini Impurity       │   │   │   └───────────────┬────────────────┘   │
+│   ├───────────────────────────────────┤   │   │                   │                    │
+│   │  Joblib Serialized Artifacts      │   │   │                   ▼                    │
+│   │  - readiness_model.joblib         │   │   │   ┌────────────────────────────────┐   │
+│   │  - model_metadata.json            │   │   │   │  MongoDB Database Engine       │   │
+│   └───────────────────────────────────┘   │   │   │  (Fallback: mongomock memory)  │   │
+└───────────────────────────────────────────┘   │   └────────────────────────────────┘   │
+                                                └────────────────────────────────────────┘
 ```
-
----
-
-## 3. Key Features
-
-- **🏠 Home Dashboard:** Student profile summary, total assessments count, average competency score, metric cards, topic performance bar chart, and critical action areas.
-- **👤 Student Profile Management:** Create and edit technical profiles with field validation (unique email, degree, target job role, experience level, preferred programming language).
-- **📝 Technical Skill Assessment:** Evaluation across 10 topics (0–100) with quick-fill presets and instant classification into Strong (80–100), Moderate (50–79), and Weak (<50).
-- **🔍 Strong & Weak Topic Analysis:** Identifies highest/lowest topics, complete competency rankings, and historical delta comparisons (improvement/regression).
-- **🎯 Interview Question Generator:** Dynamic retrieval from MongoDB filtered by Topic, Difficulty (Beginner, Intermediate, Advanced), and Type (Conceptual, Programming, Scenario-Based), featuring expandable answers and self-rating tracking.
-- **🛣️ Personalized Learning Roadmap:** Automatically prioritizes weak subjects, detailing concepts to study, coding exercises, mini-projects, estimated completion times, and interactive progress check-off saved to MongoDB.
-- **🤖 Interview Readiness Prediction:** Genuine Scikit-learn Decision Tree model predicting readiness tier with class probabilities, top feature importances, and strategic advice.
-- **📊 Performance Analytics:** 6 comprehensive Matplotlib visualizations:
-  1. Topic-wise skill score bar chart with threshold benchmarks.
-  2. Horizontal ranked bar chart (lowest to highest).
-  3. Topic distribution doughnut chart (Strong vs Moderate vs Weak).
-  4. Historical score progression line chart across attempts.
-  5. Current vs. previous assessment grouped bar chart.
-  6. Decision Tree Confusion Matrix heatmap and test set evaluation metrics.
-- **📜 Assessment History:** Detailed records of all past attempts with drill-down capability.
-- **⚙️ Admin & Question Management:** Question repository browser, custom question authoring form with schema validation, and seed utility.
 
 ---
 
 ## 4. Technology Stack
 
-| Layer | Component | Version / Description |
-| :--- | :--- | :--- |
-| **Language** | Python | 3.10+ / 3.13 |
-| **Frontend UI** | Streamlit | 1.30+ |
-| **Machine Learning** | Scikit-learn | 1.3+ (DecisionTreeClassifier) |
-| **Data Processing** | Pandas, NumPy | Data manipulation and numerical operations |
-| **Visualizations** | Matplotlib | Multi-panel analytical charts |
-| **Database** | MongoDB / PyMongo | Document-based persistence |
-| **Database Mock** | mongomock | In-memory fallback simulation for offline testing |
-| **Model Persistence**| Joblib | Serialization of trained ML artifacts |
-| **Config** | python-dotenv | Environment variable configuration via `.env` |
-| **Unit Testing** | Pytest | Test suite with 17 automated tests |
+| Layer | Component | Version | Functional Purpose |
+| :--- | :--- | :--- | :--- |
+| **Runtime Environment** | Python | `3.10` / `3.13` | Core execution runtime |
+| **Web Interface** | Streamlit | `^1.30.0` | Responsive multi-page web application and interactive widgets |
+| **Machine Learning** | Scikit-learn | `^1.3.0` | Decision Tree training, evaluation, cross-validation, and metrics |
+| **Data Manipulation** | Pandas | `^2.0.0` | Tabular data manipulation, aggregations, and dataframe transformations |
+| **Numerical Computing** | NumPy | `^1.24.0` | Vectorized operations, array transformations, and statistical metrics |
+| **Data Visualization** | Matplotlib | `^3.7.0` | Multi-panel figures, bar charts, line plots, and confusion matrix heatmaps |
+| **Database Driver** | PyMongo | `^4.6.0` | Official Python driver for MongoDB BSON document transactions |
+| **In-Memory Mock DB** | mongomock | `^4.1.2` | Zero-configuration fallback engine ensuring offline testability |
+| **Model Serialization** | Joblib | `^1.3.0` | High-performance serialization of trained scikit-learn models |
+| **Configuration** | python-dotenv | `^1.0.0` | Secure environment variable parsing from `.env` files |
+| **Testing Framework** | Pytest | `^7.4.0` | Automated test discovery, execution, and validation fixtures |
 
 ---
 
-## 5. Project Folder Structure
+## 5. Application Modules & User Interface
+
+The platform consists of **10 specialized pages** accessible via the sidebar navigation:
+
+1. **🏠 Home Dashboard (`modules/home_dashboard.py`):**
+   - High-level student summary card and active target role display.
+   - 5 KPI metric cards: Total Assessments Completed, Overall Average Score, Strong Topics Count, Weak Topics Count, and Latest ML Readiness Level.
+   - Dual-column analytical breakdown: Matplotlib topic-wise bar chart and critical weakness callouts.
+   - Recent assessment history table.
+   - Graceful empty-state onboarding for first-time students.
+
+2. **👤 Student Profile Management (`modules/student_profile.py`):**
+   - Create, edit, and switch between student profiles stored in MongoDB.
+   - Validates Full Name, unique Email, Education Level, Course/Major, Target Role, Experience Tier, and Preferred Language.
+   - Enforces unique email constraints with database-backed integrity checks.
+
+3. **📝 Technical Skill Assessment (`modules/skill_assessment.py`):**
+   - Normalized interactive sliders (0–100) across 10 topics:
+     * *Python Programming*, *Data Structures and Algorithms*, *Object-Oriented Programming*, *Database Management Systems*, *SQL & MongoDB*, *Operating Systems*, *Computer Networks*, *Machine Learning*, *Data Analysis*, *Problem-Solving Skills*.
+   - Quick-fill presets (`Advanced Ready`, `Balanced Intermediate`, `Beginner Needs Work`, `Reset to 50`) for rapid demonstration.
+   - On submission: validates input bounds, calculates mathematical averages, categorizes strong/moderate/weak topics, persists the attempt to MongoDB, triggers the ML prediction engine, and generates an updated learning roadmap.
+
+4. **🔍 Strong and Weak Topic Analysis (`modules/topic_analysis.py`):**
+   - Ranks all 10 topics from highest to lowest proficiency.
+   - Highlights the candidate's `#1 Top Subject` and `#1 Critical Area`.
+   - Flags topics scoring $< 50\%$ requiring immediate remediation.
+   - Longitudinal delta comparison table comparing current vs. previous assessment scores (`Improved`, `Dropped`, `Unchanged`).
+   - Role-specific strategic recommendations tailored to the candidate's target career path.
+
+5. **🎯 Interview Question Generator (`modules/question_generator.py`):**
+   - Queries MongoDB collection `interview_questions` using dynamic compound filters: Topic, Difficulty (`Beginner`, `Intermediate`, `Advanced`), and Question Type (`Conceptual`, `Programming`, `Scenario-Based`).
+   - Configurable question batch size (3, 5, 8, 10).
+   - Interactive practice mode with expandable suggested answers and technical explanations.
+   - Self-rating logger (`Mastered`, `Needs Review`, `Difficult`) writing practice results to MongoDB collection `practice_sessions`.
+
+6. **🛣️ Personalized Learning Roadmap (`modules/learning_roadmap.py`):**
+   - Analyzes weak and moderate topics, prioritizing the lowest scores first.
+   - Dynamically assembles study tracks detailing:
+     * Key theoretical concepts.
+     * Hands-on coding exercises.
+     * Suggested mini-projects.
+     * Mock interview challenge questions.
+     * Estimated study duration.
+   - Interactive completion checkboxes synchronized directly with MongoDB, featuring real-time percentage progress bars.
+
+7. **🤖 Interview Readiness Prediction (`modules/readiness_prediction.py`):**
+   - Loads the serialized Scikit-learn Decision Tree model.
+   - Outputs the predicted readiness class with probability distributions across all 3 tiers.
+   - Displays tree feature importance weights for the student's top influential scores.
+   - Provides concrete, explainable advice and links to retake assessments.
+   - Prominently displays the academic synthetic data disclaimer.
+
+8. **📊 Performance Analytics (`modules/analytics.py`):**
+   - 6 publication-quality Matplotlib figures embedded in Streamlit:
+     1. *Topic-wise Skill Scores Bar Chart* with 80% (strong) and 50% (weak) visual threshold lines.
+     2. *Horizontal Ranked Bar Chart* ordering competencies from lowest to highest.
+     3. *Topic Category Distribution Doughnut Chart* showing proportional breakdown.
+     4. *Historical Progress Line Chart* tracking average score trajectory across attempts.
+     5. *Grouped Comparison Bar Chart* comparing previous vs. latest assessment attempts.
+     6. *Confusion Matrix Heatmap* displaying test set classification performance.
+
+9. **📜 Assessment History (`modules/assessment_history.py`):**
+   - Chronological summary table of all completed assessment attempts.
+   - Interactive attempt selector enabling inspection of historical score snapshots.
+
+10. **⚙️ Admin & Question Management (`modules/admin_questions.py`):**
+    - Question repository statistics (total documents, topics covered, difficulty tiers).
+    - Question search engine supporting keyword search, tags, and topic filtering.
+    - Full-featured question authoring form with schema validation.
+    - One-click default question seeder populating MongoDB with 32+ curated technical questions.
+
+---
+
+## 6. Machine Learning Pipeline
+
+### Model Architecture & Hyperparameters
+The interview readiness engine utilizes the **Classification and Regression Trees (CART)** implementation in `sklearn.tree.DecisionTreeClassifier`:
+
+```python
+DecisionTreeClassifier(
+    criterion="gini",           # Gini Impurity metric for optimal split discovery
+    max_depth=6,                # Constrained depth to prevent overfitting
+    min_samples_split=12,       # Minimum samples required to split an internal node
+    min_samples_leaf=6,         # Minimum samples required at a leaf node
+    random_state=42             # Deterministic seed for reproducible evaluation
+)
+```
+
+### Feature Engineering & Formulation
+The model evaluates an 11-dimensional feature vector $\mathbf{x} \in \mathbb{R}^{11}$:
+
+$$\mathbf{x} = \begin{bmatrix} s_1 & s_2 & s_3 & s_4 & s_5 & s_6 & s_7 & s_8 & s_9 & s_{10} & \bar{s} \end{bmatrix}^T$$
+
+Where:
+- $s_1, \dots, s_{10} \in [0, 100]$ represent scores for each evaluated topic.
+- $\bar{s} = \frac{1}{10} \sum_{i=1}^{10} s_i$ represents the Overall Average Score.
+
+### Target Classes
+$$\mathcal{Y} \in \{\text{"Beginner / Needs Improvement"}, \text{"Intermediate / Partially Ready"}, \text{"Interview Ready"}\}$$
+
+### Synthetic Training Data Generation
+To satisfy academic project evaluation without requiring private student records, `ml/train_model.py` generates 800 synthetic student observations based on pedagogical heuristics:
+- **Beginner Archetype (30%):** $\mu = 38, \sigma = 12$ across topics.
+- **Intermediate Archetype (45%):** $\mu = 64, \sigma = 11$ across topics.
+- **Interview Ready Archetype (25%):** $\mu = 83, \sigma = 8$ across topics.
+- **Labeling Rules:**
+  * Candidates with $\bar{s} \ge 74\%$ and foundational scores in DSA $\ge 65\%$ and Problem-Solving $\ge 65\%$ are labeled **Interview Ready**.
+  * Candidates with $\bar{s} < 50\%$ or foundational scores in DSA $< 42\%$ and Problem-Solving $< 42\%$ are labeled **Beginner / Needs Improvement**.
+  * All remaining candidates are labeled **Intermediate / Partially Ready**.
+- **Label Noise:** 3% randomized label noise is injected to simulate human interviewer borderline variance and prevent artificial 100% test accuracy.
+
+### Model Evaluation & Confusion Matrix
+Evaluated on an 80/20 stratified holdout test set (160 test instances):
+
+| Metric | Weighted Average | Macro Average |
+| :--- | :---: | :---: |
+| **Accuracy** | **95.62%** | — |
+| **Precision** | **0.9568** | **0.9575** |
+| **Recall** | **0.9562** | **0.9546** |
+| **F1-Score** | **0.9559** | **0.9554** |
+
+#### Test Set Confusion Matrix
+```
+                         PREDICTED
+                 Needs Impr.  Partially Ready  Interview Ready
+ACTUAL
+Needs Impr.          45              3                0
+Partially Ready       2             68                2
+Interview Ready       0              0               40
+```
+
+### Academic Disclaimer & Ethical AI
+> **Academic Transparency Notice:**
+> The Decision Tree Classifier deployed in this platform is trained on a synthetic demonstration dataset constructed for academic evaluation. Predictions provide diagnostic guidance and skill development tendencies. They do not constitute an empirical guarantee of commercial employment or interview outcomes.
+
+---
+
+## 7. Database Architecture & MongoDB Schema
+
+The system utilizes MongoDB as its primary persistence engine. Database connection settings are loaded through `.env` (`MONGODB_URI` and `MONGODB_DATABASE`).
+
+### Collection Specifications
+
+#### 1. `students` Collection
+Stores student identity and technical profile attributes.
+```json
+{
+  "_id": {"$oid": "671e2a1b9f1d2e0012a4b891"},
+  "name": "Jane Doe",
+  "email": "jane.doe@university.edu",
+  "education": "B.Tech / B.E. (Computer Science / IT)",
+  "course": "Computer Science and Engineering",
+  "target_role": "Software Engineer",
+  "experience_level": "Student / College Fresher",
+  "preferred_language": "Python",
+  "created_at": {"$date": "2026-10-27T10:00:00.000Z"},
+  "updated_at": {"$date": "2026-10-27T10:00:00.000Z"}
+}
+```
+
+#### 2. `assessments` Collection
+Stores historical skill assessment attempts.
+```json
+{
+  "_id": {"$oid": "671e2a3c9f1d2e0012a4b892"},
+  "student_id": {"$oid": "671e2a1b9f1d2e0012a4b891"},
+  "student_email": "jane.doe@university.edu",
+  "topic_scores": {
+    "Python Programming": 88.0,
+    "Data Structures and Algorithms": 85.0,
+    "Object-Oriented Programming": 90.0,
+    "Database Management Systems": 82.0,
+    "SQL and MongoDB": 84.0,
+    "Operating Systems": 80.0,
+    "Computer Networks": 78.0,
+    "Machine Learning": 86.0,
+    "Data Analysis": 88.0,
+    "Problem-Solving Skills": 90.0
+  },
+  "average_score": 85.1,
+  "strong_topics": ["Python Programming", "Data Structures and Algorithms", "..."],
+  "moderate_topics": ["Computer Networks"],
+  "weak_topics": [],
+  "created_at": {"$date": "2026-10-27T10:05:00.000Z"}
+}
+```
+
+#### 3. `interview_questions` Collection
+Stores the technical question repository.
+```json
+{
+  "_id": {"$oid": "671e2a5f9f1d2e0012a4b893"},
+  "question_id": "DSA-002",
+  "topic": "Data Structures and Algorithms",
+  "difficulty": "Intermediate",
+  "question_type": "Programming",
+  "job_role": "Software Engineer",
+  "question": "Describe how to detect a cycle in a singly linked list and return the node where the cycle begins.",
+  "answer": "Use Floyd's Cycle-Finding Algorithm (Tortoise and Hare)...",
+  "explanation": "Let distance from head to cycle start be L, cycle length be C...",
+  "tags": ["dsa", "linked-list", "floyd-cycle", "two-pointers"],
+  "created_at": {"$date": "2026-10-27T09:00:00.000Z"}
+}
+```
+
+#### 4. `readiness_predictions` Collection
+Logs ML inference predictions with confidence levels.
+```json
+{
+  "_id": {"$oid": "671e2a7b9f1d2e0012a4b894"},
+  "student_id": {"$oid": "671e2a1b9f1d2e0012a4b891"},
+  "assessment_id": {"$oid": "671e2a3c9f1d2e0012a4b892"},
+  "predicted_readiness": "Interview Ready",
+  "confidence": 98.2,
+  "probabilities": {
+    "Beginner / Needs Improvement": 0.0,
+    "Intermediate / Partially Ready": 1.8,
+    "Interview Ready": 98.2
+  },
+  "overall_average": 85.1,
+  "model_version": "DecisionTree-v1.0",
+  "created_at": {"$date": "2026-10-27T10:05:02.000Z"}
+}
+```
+
+#### 5. `learning_roadmaps` Collection
+Stores customized learning tracks and interactive task progress.
+```json
+{
+  "_id": {"$oid": "671e2a9a9f1d2e0012a4b895"},
+  "student_id": {"$oid": "671e2a1b9f1d2e0012a4b891"},
+  "assessment_id": {"$oid": "671e2a3c9f1d2e0012a4b892"},
+  "target_role": "Software Engineer",
+  "tasks": [
+    {
+      "topic": "Computer Networks",
+      "current_score": 78.0,
+      "priority": "Medium (Reinforcement)",
+      "duration": "10 Days",
+      "concepts": ["TCP Handshake", "DNS Lifecycle", "TLS 1.3"],
+      "exercises": ["Packet analysis with Wireshark"],
+      "project": "Custom HTTP client socket",
+      "interview_task": "Walk through typing a URL in a browser",
+      "completed": true
+    }
+  ],
+  "completion_percentage": 100.0,
+  "created_at": {"$date": "2026-10-27T10:05:05.000Z"},
+  "updated_at": {"$date": "2026-10-27T10:15:00.000Z"}
+}
+```
+
+#### 6. `practice_sessions` Collection
+Logs student practice attempts and self-ratings.
+```json
+{
+  "_id": {"$oid": "671e2abb9f1d2e0012a4b896"},
+  "student_id": {"$oid": "671e2a1b9f1d2e0012a4b891"},
+  "student_email": "jane.doe@university.edu",
+  "question_id": "DSA-002",
+  "topic": "Data Structures and Algorithms",
+  "difficulty": "Intermediate",
+  "self_rating": "Mastered / Answered Correctly",
+  "created_at": {"$date": "2026-10-27T10:20:00.000Z"}
+}
+```
+
+### Indexing Strategies
+The database layer (`database/collections.py`) automatically ensures the following indexes:
+- `students`: Unique index on `email`.
+- `interview_questions`: Compound index on `(topic, difficulty)` and unique index on `question_id`.
+- `assessments`: Compound index on `(student_id, created_at DESC)`.
+- `readiness_predictions`: Compound index on `(student_id, created_at DESC)`.
+- `learning_roadmaps`: Compound index on `(student_id, assessment_id)`.
+- `practice_sessions`: Compound index on `(student_id, created_at DESC)`.
+
+### Fault-Tolerant Mock Fallback
+In production academic evaluations where a live MongoDB daemon (`mongod`) or cloud cluster might not be active on localhost, `database/connection.py` employs a non-blocking connection check (`serverSelectionTimeoutMS=2000`). If the connection times out, it gracefully instantiates an in-memory database simulation using `mongomock`. This ensures that zero unhandled database exceptions crash the application during live presentations.
+
+---
+
+## 8. Directory Structure
 
 ```
 AI_Interview/
-├── app.py                      # Main Streamlit application entrypoint
-├── requirements.txt            # Python dependencies
-├── README.md                   # Complete documentation
-├── .env.example                # Environment variables template
-├── .env                        # Local environment variables
-├── .gitignore                  # Git ignore rules
+├── app.py                      # Streamlit application entrypoint & routing logic
+├── requirements.txt            # Locked third-party Python dependencies
+├── README.md                   # Comprehensive technical documentation
+├── .env.example                # Environment variable configuration template
+├── .env                        # Active environment configuration
+├── .gitignore                  # Git tracking exclusion rules
 │
 ├── config/
-│   ├── __init__.py
-│   └── settings.py             # Global constants, thresholds, and paths
+│   ├── __init__.py             # Config package initialization
+│   └── settings.py             # Global constants, thresholds, and artifact paths
 │
 ├── database/
-│   ├── __init__.py
-│   ├── connection.py           # MongoDB connection manager with timeout & mock fallback
-│   ├── collections.py          # Collection getters, index creation, ObjectId helpers
-│   └── seed_questions.py       # Seed script populating initial question database
+│   ├── __init__.py             # Database package initialization
+│   ├── connection.py           # MongoDB connection pool & fallback manager
+│   ├── collections.py          # Collections accessors, schema indexes & serializers
+│   └── seed_questions.py       # MongoDB seeding utility (32+ technical questions)
 │
 ├── modules/
-│   ├── __init__.py
-│   ├── home_dashboard.py       # Home dashboard view & metrics
-│   ├── student_profile.py      # Profile creation and editing
-│   ├── skill_assessment.py     # Assessment scoring and submission
-│   ├── topic_analysis.py       # Diagnostic analysis and historical comparison
-│   ├── question_generator.py   # Question retrieval and interactive practice
-│   ├── learning_roadmap.py     # Priority-based study tracks & task tracking
-│   ├── readiness_prediction.py # ML prediction page with feature explainers
-│   ├── analytics.py            # Matplotlib data visualization suite
-│   ├── assessment_history.py   # Past assessment attempts & inspection
-│   └── admin_questions.py      # Question management and seeding
+│   ├── __init__.py             # Modules package initialization
+│   ├── home_dashboard.py       # Home dashboard and summary analytics view
+│   ├── student_profile.py      # Student profile creation, editing, and switching
+│   ├── skill_assessment.py     # Skill assessment entry form with presets
+│   ├── topic_analysis.py       # Diagnostic topic ranking and delta comparison
+│   ├── question_generator.py   # Multi-filter interview question practice engine
+│   ├── learning_roadmap.py     # Priority-ordered learning roadmap module
+│   ├── readiness_prediction.py # ML Decision Tree prediction interface
+│   ├── analytics.py            # Comprehensive 6-panel Matplotlib charts
+│   ├── assessment_history.py   # Historical assessment attempts review
+│   └── admin_questions.py      # Question repository browser and authoring form
 │
 ├── ml/
-│   ├── __init__.py
+│   ├── __init__.py             # Machine learning package initialization
 │   ├── train_model.py          # Decision Tree training script & synthetic generator
-│   ├── predict.py              # ML inference pipeline & explainers
+│   ├── predict.py              # ML inference service & educational explainers
 │   └── model_evaluation.py     # Model metadata and confusion matrix loader
 │
 ├── utils/
-│   ├── __init__.py
-│   ├── validators.py           # Validation for emails, profiles, scores, questions
-│   ├── helpers.py              # Score categorization & metric aggregations
-│   └── session_manager.py      # Streamlit session state management
+│   ├── __init__.py             # Utilities package initialization
+│   ├── validators.py           # Field, email, score, and question validators
+│   ├── helpers.py              # Math calculations, classifications, and colors
+│   └── session_manager.py      # Streamlit session state lifecycle management
 │
 ├── models/
-│   ├── readiness_model.joblib  # Serialized Scikit-learn Decision Tree
+│   ├── readiness_model.joblib  # Serialized Scikit-learn Decision Tree Classifier
 │   └── model_metadata.json     # Evaluation metrics, confusion matrix, feature weights
 │
 └── tests/
-    ├── __init__.py
-    ├── test_validators.py      # Tests for validation functions
-    ├── test_assessment.py      # Tests for scoring and classification
-    ├── test_topic_analysis.py  # Tests for rankings and deltas
-    ├── test_readiness_prediction.py # Tests for ML model inference
-    └── test_roadmap.py         # Tests for roadmap task prioritization
+    ├── __init__.py             # Tests package initialization
+    ├── test_validators.py      # Unit tests for input validation logic
+    ├── test_assessment.py      # Unit tests for score aggregation & thresholds
+    ├── test_topic_analysis.py  # Unit tests for topic rankings & delta tracking
+    ├── test_readiness_prediction.py # Unit tests for ML prediction pipeline
+    └── test_roadmap.py         # Unit tests for roadmap task synthesis
 ```
 
 ---
 
-## 6. Database Architecture (MongoDB)
+## 9. Installation & Setup Instructions
 
-The system utilizes MongoDB as its primary store. Database connection parameters are read from `.env` via `MONGODB_URI` and `MONGODB_DATABASE`.
+### Prerequisites
+- **Python:** Version `3.10` or higher (`3.13` supported).
+- **Package Manager:** `pip`.
+- **Database (Optional):** Local MongoDB Community Server or a free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster URI.
 
-### Collections
-
-1. **`students`**: Stores student profiles.
-   - Fields: `name`, `email` *(unique index)*, `education`, `course`, `target_role`, `experience_level`, `preferred_language`, `created_at`, `updated_at`.
-2. **`assessments`**: Stores historical assessment attempts.
-   - Fields: `student_id`, `student_email`, `topic_scores`, `average_score`, `strong_topics`, `moderate_topics`, `weak_topics`, `created_at`.
-3. **`interview_questions`**: Technical question repository.
-   - Fields: `question_id` *(unique)*, `topic`, `difficulty`, `question_type`, `job_role`, `question`, `answer`, `explanation`, `tags`, `created_at`.
-4. **`readiness_predictions`**: Persists ML prediction logs.
-   - Fields: `student_id`, `assessment_id`, `predicted_readiness`, `confidence`, `probabilities`, `overall_average`, `model_version`, `created_at`.
-5. **`learning_roadmaps`**: Stores prioritized roadmaps with interactive task completion.
-   - Fields: `student_id`, `assessment_id`, `target_role`, `tasks` (array of concepts, exercises, projects, status), `completion_percentage`, `created_at`, `updated_at`.
-6. **`practice_sessions`**: Logs student self-ratings during practice.
-   - Fields: `student_id`, `question_id`, `topic`, `difficulty`, `self_rating`, `created_at`.
-
-> **Note on Offline / Academic Demonstration:**
-> If a local MongoDB instance is offline or unreachable, the system automatically logs a diagnostic warning and activates an in-memory database simulation (`mongomock`) so that reviewers can fully test the entire application workflow without crashing.
-
----
-
-## 7. Machine Learning Methodology
-
-### Algorithm & Features
-The interview readiness predictor uses a **Decision Tree Classifier (CART)** from Scikit-learn with:
-- **Input Features (11):** 10 topic scores (Python, DSA, OOP, DBMS, SQL/Mongo, OS, Networks, ML, Data Analysis, Problem-Solving) + Overall Average Score.
-- **Target Classes (3):**
-  - `Interview Ready`
-  - `Intermediate / Partially Ready`
-  - `Beginner / Needs Improvement`
-
-### Dataset Assumptions & Academic Integrity
-- **Synthetic Labeled Dataset:** Generated using educational heuristics with realistic variance and label noise to reflect human interviewer evaluation standards.
-- **Academic Disclaimer:** Clearly stated in the UI that predictions are instructional estimates and require real-world interview validation.
-- **Hyperparameters:** `criterion='gini'`, `max_depth=6`, `min_samples_split=12`, `min_samples_leaf=6`, `random_state=42`.
-- **Evaluation Performance:** Tested on a stratified 20% holdout test set with **>95% accuracy** and balanced F1-scores.
-
----
-
-## 8. Installation & Setup Guide
-
-### 1. Clone or Open the Workspace
+### Step 1: Open the Project Directory
 ```powershell
 cd C:\Users\samik\Desktop\AI_Interview
 ```
 
-### 2. Configure Environment Variables
-Copy the example `.env` file:
+### Step 2: Configure Environment Variables
+Copy `.env.example` to create `.env`:
 ```powershell
-cp .env.example .env
+Copy-Item .env.example .env
 ```
-Edit `.env` to configure your MongoDB connection:
+Ensure your `.env` contains:
 ```ini
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DATABASE=ai_interview_system
 USE_MOCK_DB=false
 ```
-*(For MongoDB Atlas, paste your cluster connection string into `MONGODB_URI`)*.
+*(If using MongoDB Atlas, replace `MONGODB_URI` with your connection string: `mongodb+srv://<user>:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority`)*.
 
-### 3. Install Dependencies
+### Step 3: Install Required Dependencies
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-### 4. Train the Machine Learning Model
+### Step 4: Train the Machine Learning Model
+Generate the synthetic training set, fit the Decision Tree, and save model artifacts:
 ```powershell
 python -m ml.train_model
 ```
-*Output: Generates `models/readiness_model.joblib` and `models/model_metadata.json`.*
+*Expected Output:*
+```text
+INFO:__main__:Generating synthetic training dataset...
+INFO:__main__:Model saved to C:\Users\samik\Desktop\AI_Interview\models\readiness_model.joblib
+INFO:__main__:Metadata saved to C:\Users\samik\Desktop\AI_Interview\models\model_metadata.json
+INFO:__main__:Training Complete. Accuracy: 95.62%, F1-Score: 0.9559
+```
 
-### 5. Seed Interview Questions into MongoDB
+### Step 5: Seed the Interview Question Bank
+Seed initial technical questions into MongoDB:
 ```powershell
 python -m database.seed_questions
 ```
-*Output: Inserts curated technical questions across all 10 topics and difficulty tiers.*
+*Expected Output:*
+```text
+INFO:__main__:Seeding complete: 32 inserted, 0 updated. Total questions in database: 32
+```
 
 ---
 
-## 9. Running the Application
+## 10. Execution Guide
 
-Launch the Streamlit web application:
+### Launch the Streamlit Web Application
+
+Run the application using the signed Python module launcher:
 
 ```powershell
 python -m streamlit run app.py
 ```
 
-Streamlit will start the local server and open your default web browser to:
-```
-http://localhost:8501
+Streamlit will initialize the local HTTP server and automatically open your default browser:
+```text
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.x.x:8501
 ```
 
 ---
 
-## 10. Running the Test Suite
+## 11. Automated Test Suite
 
-Execute the automated test suite using Pytest:
+The test suite validates core business logic, input sanitization, math metrics, ML inference, and roadmap construction across **17 unit tests**:
 
 ```powershell
 python -m pytest tests/ -v
 ```
 
-All 17 test cases test score validation, metric calculations, topic rankings, ML inference, and roadmap generation.
+### Verified Test Results
+```text
+============================= test session starts =============================
+platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.7.0
+rootdir: C:\Users\samik\Desktop\AI_Interview
+collected 17 items
+
+tests/test_assessment.py::test_classify_topic_score PASSED               [  5%]
+tests/test_assessment.py::test_calculate_assessment_metrics PASSED       [ 11%]
+tests/test_readiness_prediction.py::test_predict_readiness_high_scores PASSED [ 17%]
+tests/test_readiness_prediction.py::test_predict_readiness_low_scores PASSED [ 23%]
+tests/test_readiness_prediction.py::test_predict_readiness_intermediate_scores PASSED [ 29%]
+tests/test_roadmap.py::test_build_roadmap_weak_topics PASSED             [ 35%]
+tests/test_topic_analysis.py::test_topic_rankings_order PASSED           [ 41%]
+tests/test_topic_analysis.py::test_comparison_delta_logic PASSED         [ 47%]
+tests/test_validators.py::test_validate_email_valid PASSED               [ 52%]
+tests/test_validators.py::test_validate_email_invalid PASSED             [ 58%]
+tests/test_validators.py::test_validate_student_profile_success PASSED   [ 64%]
+tests/test_validators.py::test_validate_student_profile_missing_fields PASSED [ 70%]
+tests/test_validators.py::test_validate_scores_valid PASSED              [ 76%]
+tests/test_validators.py::test_validate_scores_out_of_bounds PASSED      [ 82%]
+tests/test_validators.py::test_validate_scores_missing_topic PASSED      [ 88%]
+tests/test_validators.py::test_validate_question_valid PASSED            [ 94%]
+tests/test_validators.py::test_validate_question_invalid PASSED          [100%]
+
+============================= 17 passed in 1.76s ==============================
+```
 
 ---
 
-## 11. Troubleshooting & FAQs
+## 12. Troubleshooting & Windows Security Guidelines
 
-### Q1: `Program 'streamlit.exe' failed to run: An Application Control policy has blocked this file`
-- **Cause:** Windows Defender Application Control (WDAC) or Smart App Control blocks newly generated unsigned `.exe` stubs inside `venv\Scripts\`.
-- **Fix:** Run Streamlit directly through the signed Python interpreter:
+### 1. `Program 'streamlit.exe' failed to run: An Application Control policy has blocked this file`
+- **Cause:** Windows Defender Application Control (WDAC) or Windows 11 Smart App Control blocks newly created, unsigned `.exe` wrapper binaries located inside user profile paths (`venv\Scripts\streamlit.exe`).
+- **Solution:** Execute Streamlit directly via the Microsoft-signed Python interpreter module flag:
   ```powershell
   python -m streamlit run app.py
   ```
 
-### Q2: MongoDB connection timed out
-- Ensure your local MongoDB service is started (`net start MongoDB` or run `mongod`).
-- If you don't have MongoDB installed locally, you can use a free cloud cluster from [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) by updating `MONGODB_URI` in `.env`, or the app will automatically run in fallback in-memory demonstration mode.
+### 2. OpenCode CLI Command Not Recognized in Command Prompt
+- **Cause:** Command Prompt (CMD) caches environment variables at launch time and will not detect newly installed PATH modifications until reopened.
+- **Solution:** Open a new Command Prompt or run the included workspace launcher:
+  ```cmd
+  opencode --version
+  ```
 
-### Q3: How to test different student scenarios quickly?
-- Navigate to the **Skill Assessment** page and use the **⚡ Quick Fill Presets** at the top (`Advanced Ready`, `Balanced Intermediate`, `Beginner Needs Work`) to immediately populate realistic score profiles.
+### 3. MongoDB Connection Timeout
+- **Diagnosis:** If local MongoDB is not running, the application logs a warning and automatically activates the in-memory `mongomock` engine. All modules remain interactive.
+- **Fix:** Start your local service (`net start MongoDB`) or supply a free cloud MongoDB Atlas cluster URI in `.env`.
 
+---
+
+## 13. Contributing Guidelines
+
+1. **Fork the Repository:** Create your feature branch (`git checkout -b feature/NewFeature`).
+2. **Follow Code Quality Standards:** Ensure all docstrings, type hints, and PEP 8 conventions are maintained.
+3. **Run Unit Tests:** Verify all unit tests pass before submitting changes (`python -m pytest tests/`).
+4. **Commit & Push:** Submit a clean Pull Request with a descriptive summary of modifications.
+
+---
+
+## 14. License
+
+This project is licensed under the **MIT License**.
+
+```
+MIT License
+
+Copyright (c) 2026 AI Interview Preparation System Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 15. Copyright & Intellectual Property
+
+```
+==============================================================================
+© 2026 AI-Powered Interview Preparation System. All Rights Reserved.
+Authored and Engineered as an Academic Demonstration Project in Advanced
+Machine Learning, Database Architecture, and Interactive Web Engineering.
+==============================================================================
+```
