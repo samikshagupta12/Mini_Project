@@ -13,7 +13,8 @@ def init_session_state():
         "practice_questions": [],
         "practice_revealed": {},
         "practice_ratings": {},
-        "current_page": "Home Dashboard",
+        "current_page": "Login / Register",
+        "system_computation": None,
         "notification": None,
     }
     for key, val in defaults.items():
@@ -40,4 +41,5 @@ def clear_current_student():
     st.session_state.latest_prediction = None
     st.session_state.practice_questions = []
     st.session_state.practice_revealed = {}
-
+    st.session_state.system_computation = None
+    st.session_state.current_page = "Login / Register"

@@ -159,33 +159,29 @@ def render_skill_assessment_page():
                 assessment_id = res.inserted_id
                 assessment_doc["_id"] = assessment_id
 
-                # Run Machine Learning Readiness Prediction
+                # Run Entire Program Computation Pipeline
                 try:
-                    ml_result = predict_readiness(entered_scores)
-                    prediction_doc = {
-                        "student_id": student_id,
-                        "assessment_id": assessment_id,
-                        "predicted_readiness": ml_result["prediction"],
-                        "confidence": ml_result["confidence"],
-                        "probabilities": ml_result["probabilities"],
-                        "overall_average": ml_result["overall_average"],
-                        "top_influencing_features": ml_result["top_influencing_features"],
-                        "explanation": ml_result["explanation"],
-                        "recommendation": ml_result["recommendation"],
-                        "model_version": "DecisionTree-v1.0",
-                        "created_at": now,
-                    }
-                    if readiness_col is not None:
-                        readiness_col.insert_one(prediction_doc)
-                    st.session_state.latest_prediction = serialize_doc(prediction_doc)
+                    from modules.computation_engine import compute_entire_program
+                    comp_results = compute_entire_program(student_id, force_roadmap_refresh=True)
+                    st.session_state.system_computation = comp_results
+                    if "ml_prediction" in comp_results:
+                        st.session_state.latest_prediction = {
+                            "predicted_readiness": comp_results["ml_prediction"],
+                            "confidence": comp_results["ml_confidence"],
+                            "probabilities": comp_results["ml_probabilities"],
+                            "overall_average": comp_results["overall_average"],
+                            "role_weighted_score": comp_results["role_weighted_score"],
+                            "explanation": comp_results["ml_explanation"],
+                            "recommendation": comp_results["ml_recommendation"],
+                        }
                 except Exception as e:
-                    st.warning(f"ML Readiness prediction note: {e}")
+                    st.warning(f"Program computation note: {e}")
 
                 # Update session state
                 st.session_state.active_assessment = serialize_doc(assessment_doc)
                 st.session_state.temp_scores = entered_scores
 
-                st.success("🎉 Assessment submitted and recorded successfully!")
+                st.success("🎉 Assessment submitted! Entire program metrics, roadmap, and ML predictions computed successfully.")
 
     # Display results if latest assessment is present
     latest = st.session_state.get("active_assessment")

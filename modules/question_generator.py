@@ -1,142 +1,145 @@
-"""Interview Question Generator and Interactive Practice Module."""
-from datetime import datetime, timezone
-import random
+"""
+Clean, Professional Technical Interview Question Generator & Interactive Practice Sandbox.
+Provides dynamic technical question generation across all 10 computer science disciplines,
+continuous loading with 'Load More Questions', verified canonical solutions, and conceptual explanations.
+Practice questions remain interactive and local — no student practice answers are stored in MongoDB.
+Only student profile, assessments, learning roadmaps, and ML readiness predictions are saved in the database.
+"""
 import streamlit as st
-from config.settings import TOPICS, DIFFICULTY_LEVELS, QUESTION_TYPES, JOB_ROLES
-from database.collections import (
-    get_questions_collection,
-    get_practice_sessions_collection,
-    to_object_id,
-)
-from utils.session_manager import get_current_student
+
+from config.settings import TOPICS, DIFFICULTY_LEVELS
+from database.collections import get_questions_collection
+from database.api_fetcher import get_fresh_questions, sync_dynamic_questions_to_db
 
 
 def render_question_generator_page():
-    st.title("🎯 Interview Question Generator")
-    st.write("Generate curated technical interview questions matching your target domain, difficulty, and problem-solving focus.")
+    st.title("🎯 Technical Interview Question Generator")
+    st.markdown("Practice genuine technical interview questions, draft your thoughts locally, and inspect canonical solutions with conceptual deep dives.")
+    
+    st.info(
+        "💡 **Practice Sandbox**: Question practice is interactive and local. "
+        "Your user profile, assessment metrics, learning roadmaps, and ML predictions are saved in MongoDB—"
+        "**no practice answers are stored in the database**."
+    )
 
     questions_col = get_questions_collection()
     if questions_col is None:
-        st.error("Database connection unavailable.")
+        st.error("Database connection unavailable. Please check your MongoDB configuration.")
         return
 
-    total_q_count = questions_col.count_documents({})
-    if total_q_count == 0:
-        st.warning("⚠️ No interview questions found in MongoDB. Please seed the database first.")
-        if st.button("🌱 Seed Interview Questions Now"):
-            from database.seed_questions import seed_database
-            cnt, msg = seed_database(force=True)
-            st.success(msg)
-            st.rerun()
-        return
-
-    # Filter Controls
-    st.subheader("⚙️ Generator Settings")
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        sel_topic = st.selectbox("Topic", ["All Topics"] + TOPICS)
-    with c2:
-        sel_diff = st.selectbox("Difficulty", ["All Difficulties"] + DIFFICULTY_LEVELS)
-    with c3:
-        sel_type = st.selectbox("Question Type", ["All Types"] + QUESTION_TYPES)
-    with c4:
-        num_questions = st.select_slider("Number of Questions", options=[3, 5, 8, 10], value=5)
-
-    current_student = get_current_student()
-
-    # Query builder
-    query = {}
-    if sel_topic != "All Topics":
-        query["topic"] = sel_topic
-    if sel_diff != "All Difficulties":
-        query["difficulty"] = sel_diff
-    if sel_type != "All Types":
-        query["question_type"] = sel_type
-
-    col_btn1, col_btn2 = st.columns([2, 1])
-    with col_btn1:
-        generate_clicked = st.button("🎲 Generate Question Set", use_container_width=True)
-
-    with col_btn2:
-        if st.button("🔄 Clear Active Questions", use_container_width=True):
-            st.session_state.practice_questions = []
-            st.session_state.practice_revealed = {}
+    # Ensure question repository is populated
+    if questions_col.count_documents({}) == 0:
+        with st.spinner("Initializing technical interview question repository..."):
+            sync_dynamic_questions_to_db(amount=20)
             st.rerun()
 
-    if generate_clicked:
-        matching = list(questions_col.find(query))
-        if not matching:
-            st.warning("No questions found matching your specific filter criteria. Try broader filters.")
-            st.session_state.practice_questions = []
-        else:
-            # Sample without replacement
-            sample_size = min(num_questions, len(matching))
-            selected = random.sample(matching, sample_size)
-            st.session_state.practice_questions = selected
-            st.session_state.practice_revealed = {q.get("question_id", str(i)): False for i, q in enumerate(selected)}
-            st.session_state.practice_ratings = {}
+    # Initialize session state for practice questions
+    if "practice_questions" not in st.session_state:
+        st.session_state.practice_questions = []
 
-    # Display Active Questions
+    # ----------------- GENERATOR FILTER CONTROLS -----------------
+    st.subheader("⚙️ Question Generator Filters")
+    
+    col1, col2, col3 = st.columns([2, 1.5, 1.5])
+    with col1:
+        sel_topic = st.selectbox("Technical Discipline", ["All Topics"] + TOPICS, key="gen_filter_topic")
+    with col2:
+        sel_diff = st.selectbox("Difficulty Tier", ["All Difficulties"] + DIFFICULTY_LEVELS, key="gen_filter_diff")
+    with col3:
+        num_questions = st.select_slider("Questions per Batch", options=[3, 5, 8, 10], value=5, key="gen_batch_size")
+
+    c_gen1, c_gen2 = st.columns([3, 1])
+    with c_gen1:
+        gen_btn = st.button("🚀 Fetch & Generate Questions", use_container_width=True)
+    with c_gen2:
+        if st.button("🔄 Clear Active Set", use_container_width=True):
+            st.session_state.practice_questions = []
+            st.rerun()
+
+    # Initial batch generation
+    if gen_btn:
+        with st.spinner("Fetching technical questions matching your filters..."):
+            fresh_qs = get_fresh_questions(
+                topic=sel_topic,
+                difficulty=sel_diff,
+                count=num_questions,
+                exclude_ids=[]
+            )
+            st.session_state.practice_questions = fresh_qs
+            st.rerun()
+
+    st.divider()
+
+    # ----------------- ACTIVE PRACTICE QUESTIONS -----------------
     active_qs = st.session_state.get("practice_questions", [])
-    if active_qs:
-        st.divider()
-        st.subheader(f"📝 Practice Session ({len(active_qs)} Questions)")
 
-        practice_col = get_practice_sessions_collection()
-        student_id = to_object_id(current_student.get("_id")) if current_student else None
+    if active_qs:
+        st.subheader(f"📝 Interactive Practice Session ({len(active_qs)} Questions)")
+        st.caption("Review each technical question, formulate your approach in the local scratchpad, and reveal the verified canonical solution.")
 
         for idx, q in enumerate(active_qs):
             q_id = q.get("question_id", f"Q-{idx+1}")
-            
-            with st.container():
-                st.markdown(
-                    f"#### Question {idx + 1}: {q.get('question')} "
-                )
-                
-                # Badges
-                b1, b2, b3 = st.columns([1, 1, 2])
-                b1.caption(f"📌 **Topic:** {q.get('topic')}")
-                b2.caption(f"⚡ **Level:** {q.get('difficulty')}")
-                b3.caption(f"🏷️ **Type:** {q.get('question_type')} | ID: `{q_id}`")
+            topic = q.get("topic", "Computer Science")
+            difficulty = q.get("difficulty", "Intermediate")
+            q_type = q.get("question_type", "Conceptual")
 
-                # Practice Answer Expander
-                with st.expander("💡 Reveal Suggested Answer & Explanation"):
-                    st.markdown("**Suggested Answer:**")
+            with st.container():
+                st.markdown(f"#### Question {idx + 1}: {q.get('question')}")
+                
+                # Metadata Badges
+                chip1, chip2, chip3 = st.columns([1.5, 1, 1])
+                chip1.info(f"📌 **Topic:** {topic}")
+                chip2.warning(f"⚡ **Level:** {difficulty}")
+                chip3.success(f"🏷️ **Type:** {q_type}")
+
+                # Local Scratchpad / Thought Area (Not saved to DB)
+                scratch_key = f"scratch_{q_id}_{idx}"
+                st.text_area(
+                    "Your Thoughts / Code Scratchpad (Local notes only - not stored in DB):",
+                    placeholder="Draft your pseudocode, key considerations, or notes here...",
+                    key=scratch_key,
+                    height=90
+                )
+
+                # Canonical Solution & Concept Breakdown Expander
+                with st.expander("💡 Reveal Solution & Technical Explanation"):
+                    st.markdown("##### Canonical Suggested Solution:")
                     st.markdown(q.get("answer", "No answer provided."))
-                    st.markdown("**Technical Explanation:**")
-                    st.write(q.get("explanation", "No explanation available."))
                     
+                    st.markdown("##### Technical Explanation & Concept Breakdown:")
+                    st.write(q.get("explanation", "No explanation available."))
+
                     if q.get("tags"):
                         st.caption(f"Tags: {', '.join(q.get('tags', []))}")
 
-                    # Self-assessment practice logger
-                    if current_student and practice_col is not None:
-                        st.write("---")
-                        r_col1, r_col2, r_col3 = st.columns([2, 1, 1])
-                        with r_col1:
-                            rating = st.radio(
-                                f"Self-Rating for {q_id}:",
-                                ["Mastered / Answered Correctly", "Needs Review", "Difficult / Review Later"],
-                                key=f"rate_{q_id}",
-                                horizontal=True
-                            )
-                        with r_col2:
-                            st.write("")
-                            if st.button("💾 Record Rating", key=f"btn_rate_{q_id}"):
-                                practice_doc = {
-                                    "student_id": student_id,
-                                    "student_email": current_student.get("email"),
-                                    "question_id": q_id,
-                                    "topic": q.get("topic"),
-                                    "difficulty": q.get("difficulty"),
-                                    "self_rating": rating,
-                                    "created_at": datetime.now(timezone.utc),
-                                }
-                                practice_col.insert_one(practice_doc)
-                                st.success("Rating recorded in MongoDB!")
+                st.write("---")
 
-                st.write("")
+        # ----------------- LOAD MORE QUESTIONS ACTION BAR -----------------
+        c_more, c_reset = st.columns([3, 1])
+        with c_more:
+            if st.button("➕ Load More Questions", use_container_width=True):
+                with st.spinner("Fetching additional questions for this session..."):
+                    current_ids = [q.get("question_id") for q in active_qs if q.get("question_id")]
+                    more_qs = get_fresh_questions(
+                        topic=sel_topic,
+                        difficulty=sel_diff,
+                        count=num_questions,
+                        exclude_ids=current_ids
+                    )
+                    
+                    # Deduplicate and append
+                    unseen_more = [q for q in more_qs if q.get("question_id") not in current_ids]
+                    if unseen_more:
+                        st.session_state.practice_questions.extend(unseen_more)
+                        st.success(f"✅ Appended {len(unseen_more)} fresh questions! Total active: {len(st.session_state.practice_questions)}")
+                        st.rerun()
+                    else:
+                        st.info("ℹ️ All available questions for this filter combination have already been loaded into your active session.")
+        
+        with c_reset:
+            if st.button("🔄 Reset Session", use_container_width=True):
+                st.session_state.practice_questions = []
+                st.rerun()
+
     else:
-        st.info("Click **'🎲 Generate Question Set'** above to load technical interview questions.")
-
+        st.info("💡 Choose your technical discipline and difficulty filters above, then click **'🚀 Fetch & Generate Questions'** to start your practice session.")

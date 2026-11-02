@@ -121,23 +121,42 @@ Traditional interview preparation is often unguided, leading students to solve a
 | **Database Driver** | PyMongo | `^4.6.0` | Official Python driver for MongoDB BSON document transactions |
 | **In-Memory Mock DB** | mongomock | `^4.1.2` | Zero-configuration fallback engine ensuring offline testability |
 | **Model Serialization** | Joblib | `^1.3.0` | High-performance serialization of trained scikit-learn models |
+| **Authentication** | hashlib, secrets | `Python Stdlib` | Salted PBKDF2-HMAC-SHA256 password hashing & timing-safe verification |
 | **Configuration** | python-dotenv | `^1.0.0` | Secure environment variable parsing from `.env` files |
-| **Testing Framework** | Pytest | `^7.4.0` | Automated test discovery, execution, and validation fixtures |
+| **Testing Framework** | Pytest | `^7.4.0` | Automated test discovery, execution, and validation fixtures (25 tests) |
 
 ---
 
 ## 5. Application Modules & User Interface
 
-The platform consists of **10 specialized pages** accessible via the sidebar navigation:
+The platform consists of specialized modules accessible via the sidebar navigation:
+
+0. **🔐 Authentication & Registration Portal (`modules/login.py`):**
+   - High-end glassmorphism and card-styled login portal.
+   - Secure sign-in using salted PBKDF2-HMAC-SHA256 password hashing (100,000 iterations).
+   - Full student registration with unique email indexing in MongoDB.
+   - 1-Click Evaluation Mode with pre-configured candidate profiles (`Alice Johnson - Software Engineer` and `Bob Smith - Data Scientist`) for instant faculty demonstrations.
 
 1. **🏠 Home Dashboard (`modules/home_dashboard.py`):**
    - High-level student summary card and active target role display.
-   - 5 KPI metric cards: Total Assessments Completed, Overall Average Score, Strong Topics Count, Weak Topics Count, and Latest ML Readiness Level.
+   - 5 KPI metric cards: Overall Score, Role-Weighted Score ($S_{\text{role}}$), Composite Readiness Index (0–100 with Letter Grade A+ to D), Strong/Weak Topic Split, and ML Readiness Tier.
    - Dual-column analytical breakdown: Matplotlib topic-wise bar chart and critical weakness callouts.
+   - **System Computation Engine Inspector:** Mathematical formulation drawer and a one-click **"⚡ Recompute Entire Program State Now"** button.
    - Recent assessment history table.
    - Graceful empty-state onboarding for first-time students.
 
 2. **👤 Student Profile Management (`modules/student_profile.py`):**
+   - View and update technical profile details (Name, Education, Course, Target Role, Experience Tier, Preferred Language).
+   - In-app password change form secured with PBKDF2 hashing.
+   - Changing the target job role automatically triggers re-computation of role-weighted proficiencies.
+   - Quick Profile Switcher for testing and grading multiple accounts.
+
+3. **🧮 Computation & Analytics Engine (`modules/computation_engine.py`):**
+   - Central computational orchestrator for the entire program:
+     * Role-weighted topic proficiencies based on specialized importance vectors.
+     * End-to-end synchronization across assessments, ML inference, roadmap tasks, and practice mastery.
+     * Dynamic Composite Interview Readiness Index synthesizing:
+       $$\text{Composite Index} = 0.55 \cdot S_{\text{role}} + 0.25 \cdot \text{Roadmap \%} + 0.20 \cdot \text{Mastery \%}$$
    - Create, edit, and switch between student profiles stored in MongoDB.
    - Validates Full Name, unique Email, Education Level, Course/Major, Target Role, Experience Tier, and Preferred Language.
    - Enforces unique email constraints with database-backed integrity checks.
@@ -155,11 +174,18 @@ The platform consists of **10 specialized pages** accessible via the sidebar nav
    - Longitudinal delta comparison table comparing current vs. previous assessment scores (`Improved`, `Dropped`, `Unchanged`).
    - Role-specific strategic recommendations tailored to the candidate's target career path.
 
-5. **🎯 Interview Question Generator (`modules/question_generator.py`):**
-   - Queries MongoDB collection `interview_questions` using dynamic compound filters: Topic, Difficulty (`Beginner`, `Intermediate`, `Advanced`), and Question Type (`Conceptual`, `Programming`, `Scenario-Based`).
-   - Configurable question batch size (3, 5, 8, 10).
-   - Interactive practice mode with expandable suggested answers and technical explanations.
-   - Self-rating logger (`Mastered`, `Needs Review`, `Difficult`) writing practice results to MongoDB collection `practice_sessions`.
+5. **🎯 Technical Interview Question Generator (`modules/question_generator.py`):**
+   - **Dynamic Question Generation:** Streams technical questions matching selected topic and difficulty tiers (`Beginner`, `Intermediate`, `Advanced`).
+   - **Continuous "Load More" Architecture:** A dedicated **"➕ Load More Questions"** button dynamically appends fresh, unseen questions to the active session without losing existing questions or hitting artificial limits.
+   - **Local Practice Sandbox:** Candidates can draft their code and thoughts in a local scratchpad before inspecting verified canonical answers.
+   - **Strict Privacy & User-Only DB Persistence:** In compliance with clean database architecture, student practice answers are **never** stored in MongoDB. MongoDB stores exclusively user information: profiles, skill assessments, learning roadmaps, and ML readiness predictions.
+   - **Verified Solutions & Explanations:** One-click reveal of canonical implementations, step-by-step concept breakdowns, and technical tags.
+
+4. **🌐 Live API Streamer & Ingestion Service (`database/api_fetcher.py`):**
+   - Autonomous pipeline querying public Computer Science APIs.
+   - Automatic classification of incoming questions into the system's 10 technical disciplines using semantic keyword matching.
+   - Intelligent mapping of difficulty tiers (`easy`, `medium`, `hard` -> `Beginner`, `Intermediate`, `Advanced`).
+   - Duplicate prevention via deterministic MD5 question hashing and upsert handling in MongoDB `interview_questions`.
 
 6. **🛣️ Personalized Learning Roadmap (`modules/learning_roadmap.py`):**
    - Analyzes weak and moderate topics, prioritizing the lowest scores first.
@@ -545,7 +571,7 @@ Streamlit will initialize the local HTTP server and automatically open your defa
 
 ## 11. Automated Test Suite
 
-The test suite validates core business logic, input sanitization, math metrics, ML inference, and roadmap construction across **17 unit tests**:
+The test suite validates core business logic, input sanitization, math metrics, ML inference, roadmap construction, password security, and system computation across **23 unit tests**:
 
 ```powershell
 python -m pytest tests/ -v
@@ -556,17 +582,36 @@ python -m pytest tests/ -v
 ============================= test session starts =============================
 platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.7.0
 rootdir: C:\Users\samik\Desktop\AI_Interview
-collected 17 items
+collected 25 items
 
-tests/test_assessment.py::test_classify_topic_score PASSED               [  5%]
-tests/test_assessment.py::test_calculate_assessment_metrics PASSED       [ 11%]
-tests/test_readiness_prediction.py::test_predict_readiness_high_scores PASSED [ 17%]
-tests/test_readiness_prediction.py::test_predict_readiness_low_scores PASSED [ 23%]
-tests/test_readiness_prediction.py::test_predict_readiness_intermediate_scores PASSED [ 29%]
-tests/test_roadmap.py::test_build_roadmap_weak_topics PASSED             [ 35%]
-tests/test_topic_analysis.py::test_topic_rankings_order PASSED           [ 41%]
-tests/test_topic_analysis.py::test_comparison_delta_logic PASSED         [ 47%]
-tests/test_validators.py::test_validate_email_valid PASSED               [ 52%]
+tests/test_api_fetcher.py::test_classify_question_topic_rules PASSED     [  4%]
+tests/test_api_fetcher.py::test_map_api_difficulty PASSED                [  8%]
+tests/test_assessment.py::test_classify_topic_score PASSED               [ 12%]
+tests/test_assessment.py::test_calculate_assessment_metrics PASSED       [ 16%]
+tests/test_auth.py::test_password_hashing_and_verification PASSED        [ 20%]
+tests/test_auth.py::test_password_salt_uniqueness PASSED                 [ 24%]
+tests/test_auth.py::test_verify_password_malformed_input PASSED          [ 28%]
+tests/test_computation.py::test_role_weighted_score_software_engineer PASSED [ 32%]
+tests/test_computation.py::test_role_weighted_score_data_scientist PASSED [ 36%]
+tests/test_computation.py::test_composite_readiness_index PASSED         [ 40%]
+tests/test_readiness_prediction.py::test_predict_readiness_high_scores PASSED [ 44%]
+tests/test_readiness_prediction.py::test_predict_readiness_low_scores PASSED [ 48%]
+tests/test_readiness_prediction.py::test_predict_readiness_intermediate_scores PASSED [ 52%]
+tests/test_roadmap.py::test_build_roadmap_weak_topics PASSED             [ 56%]
+tests/test_topic_analysis.py::test_topic_rankings_order PASSED           [ 60%]
+tests/test_topic_analysis.py::test_comparison_delta_logic PASSED         [ 64%]
+tests/test_validators.py::test_validate_email_valid PASSED               [ 68%]
+tests/test_validators.py::test_validate_email_invalid PASSED             [ 72%]
+tests/test_validators.py::test_validate_student_profile_success PASSED   [ 76%]
+tests/test_validators.py::test_validate_student_profile_missing_fields PASSED [ 80%]
+tests/test_validators.py::test_validate_scores_valid PASSED              [ 84%]
+tests/test_validators.py::test_validate_scores_out_of_bounds PASSED      [ 88%]
+tests/test_validators.py::test_validate_scores_missing_topic PASSED      [ 92%]
+tests/test_validators.py::test_validate_question_valid PASSED            [ 96%]
+tests/test_validators.py::test_validate_question_invalid PASSED          [100%]
+
+============================= 25 passed in 2.85s ==============================
+```
 tests/test_validators.py::test_validate_email_invalid PASSED             [ 58%]
 tests/test_validators.py::test_validate_student_profile_success PASSED   [ 64%]
 tests/test_validators.py::test_validate_student_profile_missing_fields PASSED [ 70%]

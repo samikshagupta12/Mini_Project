@@ -6,7 +6,7 @@ import streamlit as st
 from config.settings import MONGODB_DATABASE, MONGODB_URI
 from database.connection import check_connection, get_database
 from database.collections import init_db_indexes
-from utils.session_manager import init_session_state, get_current_student, set_current_student
+from utils.session_manager import init_session_state, get_current_student, set_current_student, clear_current_student
 from database.seed_questions import seed_database
 from ml.predict import get_model_status
 
@@ -33,25 +33,32 @@ model_ready, _ = get_model_status()
 # ----------------- SIDEBAR NAVIGATION -----------------
 st.sidebar.title("🎓 AI Interview Prep")
 
-
-# Student Session Status in sidebar
 current_student = get_current_student()
+
 if current_student:
-    st.sidebar.markdown(f"**Student:** `{current_student.get('name')}`")
+    st.sidebar.markdown(f"**👤 Student:** `{current_student.get('name')}`")
     st.sidebar.caption(f"Role: {current_student.get('target_role')}")
-    if st.sidebar.button("Switch / Logout", use_container_width=True):
-        st.session_state.current_student = None
-        st.session_state.active_email = ""
-        st.session_state.active_assessment = None
-        st.session_state.latest_prediction = None
+    
+    # Show computed grade if available
+    comp = st.session_state.get("system_computation")
+    if comp and comp.get("composite_grade"):
+        st.sidebar.markdown(f"**Readiness:** `{comp.get('composite_grade')} ({comp.get('composite_index')}%)`")
+
+    if st.sidebar.button("🚪 Sign Out", use_container_width=True):
+        clear_current_student()
+        st.session_state.current_page = "Login / Register"
         st.rerun()
 else:
-    st.sidebar.info("👤 No active student profile.")
+    st.sidebar.info("👤 Not Signed In")
+    if st.sidebar.button("🔐 Sign In / Register", use_container_width=True):
+        st.session_state.current_page = "Login / Register"
+        st.rerun()
 
 st.sidebar.divider()
 
 # Navigation menu
 PAGES = [
+    "Login / Register",
     "Home Dashboard",
     "Student Profile",
     "Skill Assessment",
@@ -63,6 +70,10 @@ PAGES = [
     "Assessment History",
     "Admin and Question Management",
 ]
+
+# If not logged in and on an authenticated page, guide them to Login / Register
+if not current_student and st.session_state.current_page not in ("Login / Register", "Home Dashboard", "Admin and Question Management"):
+    st.session_state.current_page = "Login / Register"
 
 # Sync navigation with session state
 current_page_idx = 0
@@ -81,7 +92,11 @@ st.sidebar.caption("Machine Learning: Decision Tree Classifier (Scikit-learn)\nD
 
 # ----------------- PAGE ROUTING -----------------
 
-if selected_page == "Home Dashboard":
+if selected_page == "Login / Register":
+    from modules.login import render_login_page
+    render_login_page()
+
+elif selected_page == "Home Dashboard":
     from modules.home_dashboard import render_home_dashboard
     render_home_dashboard()
 
