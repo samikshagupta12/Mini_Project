@@ -1,7 +1,7 @@
 """Unit tests for ML readiness prediction with Decision Tree."""
 import pytest
 from ml.train_model import train_decision_tree_model
-from ml.predict import predict_readiness
+from ml.predict import predict_readiness, ensure_model_initialized
 from config.settings import TOPICS, READINESS_CLASSES
 
 
@@ -38,4 +38,30 @@ def test_predict_readiness_intermediate_scores():
 
     assert result["prediction"] == "Intermediate / Partially Ready"
     assert result["overall_average"] == 62.0
+
+
+def test_ensure_model_initialization():
+    ok, metadata, msg = ensure_model_initialized(force_retrain=False)
+    assert ok is True
+    assert metadata is not None
+    assert "evaluation_metrics" in metadata
+    assert metadata["evaluation_metrics"]["accuracy"] > 0.60
+    assert "feature_columns" in metadata
+
+
+def test_ensure_model_initialization_when_file_missing(tmp_path):
+    from config.settings import MODEL_PATH, MODEL_METADATA_PATH
+    import os
+    # Temporarily remove artifacts if present
+    if MODEL_PATH.exists():
+        os.remove(MODEL_PATH)
+    if MODEL_METADATA_PATH.exists():
+        os.remove(MODEL_METADATA_PATH)
+
+    # Actual initialization must re-create both files
+    ok, metadata, msg = ensure_model_initialized(force_retrain=True)
+    assert ok is True
+    assert MODEL_PATH.exists()
+    assert MODEL_METADATA_PATH.exists()
+    assert metadata["evaluation_metrics"]["accuracy"] > 0.60
 

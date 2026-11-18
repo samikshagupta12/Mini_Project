@@ -11,6 +11,7 @@ from config.settings import (
     READINESS_CLASSES,
     MODEL_PATH,
     MODEL_METADATA_PATH,
+    MODELS_DIR,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,26 +20,61 @@ _model = None
 _metadata = None
 
 
-def load_model():
-    """Loads the serialized Decision Tree model and metadata."""
+def ensure_model_initialized(force_retrain: bool = False) -> Tuple[bool, Optional[dict], str]:
+    """
+    Checks if the Decision Tree model and metadata exist. If missing or corrupted,
+    or if force_retrain is True, actually executes model training, persists the artifacts,
+    validates the model with a forward pass inference, and returns status.
+    """
     global _model, _metadata
-    if _model is not None and _metadata is not None:
-        return _model, _metadata
+    
+    if not force_retrain and _model is not None and _metadata is not None:
+        return True, _metadata, "Model is ready and loaded in memory."
 
-    if not MODEL_PATH.exists() or not MODEL_METADATA_PATH.exists():
-        # Automatically trigger training if model artifact does not exist
-        logger.info("Trained model not found. Automatically triggering training...")
-        from ml.train_model import train_decision_tree_model
-        train_decision_tree_model(save=True)
+    needs_training = force_retrain or not MODEL_PATH.exists() or not MODEL_METADATA_PATH.exists()
+
+    if needs_training:
+        try:
+            logger.info("Model artifact missing or retrain requested. Initializing Decision Tree Classifier...")
+            MODELS_DIR.mkdir(parents=True, exist_ok=True)
+            from ml.train_model import train_decision_tree_model
+            metadata = train_decision_tree_model(save=True)
+            
+            _model = joblib.load(MODEL_PATH)
+            _metadata = metadata
+            
+            # Forward validation pass to ensure model predicts cleanly
+            test_scores = {topic: 75.0 for topic in TOPICS}
+            test_df = pd.DataFrame([{**test_scores, "Overall Average Score": 75.0}])[metadata["feature_columns"]]
+            _model.predict(test_df)
+            
+            acc = metadata.get("evaluation_metrics", {}).get("accuracy", 0.0)
+            msg = f"Decision Tree model successfully initialized and trained (Accuracy: {acc:.1%})."
+            logger.info(msg)
+            return True, _metadata, msg
+        except Exception as e:
+            logger.error(f"Failed to initialize Decision Tree model: {e}")
+            return False, None, f"Model initialization failed: {e}"
 
     try:
         _model = joblib.load(MODEL_PATH)
         with open(MODEL_METADATA_PATH, "r") as f:
             _metadata = json.load(f)
-        return _model, _metadata
+        return True, _metadata, "Model loaded successfully from disk."
     except Exception as e:
-        logger.error(f"Failed to load Decision Tree model: {e}")
-        return None, None
+        logger.warning(f"Failed loading existing model artifacts ({e}). Re-initializing model...")
+        return ensure_model_initialized(force_retrain=True)
+
+
+def load_model():
+    """Loads the serialized Decision Tree model and metadata, initializing if missing."""
+    global _model, _metadata
+    if _model is not None and _metadata is not None:
+        return _model, _metadata
+    success, meta, _ = ensure_model_initialized()
+    if success:
+        return _model, _metadata
+    return None, None
 
 
 def get_model_status() -> Tuple[bool, Optional[dict]]:

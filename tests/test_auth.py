@@ -1,6 +1,7 @@
 """Unit tests for secure authentication and password hashing."""
 import pytest
-from utils.auth import hash_password, verify_password
+from utils.auth import hash_password, verify_password, authenticate_admin
+from config.settings import ADMIN_EMAIL, ADMIN_PASSWORD
 
 
 def test_password_hashing_and_verification():
@@ -36,4 +37,25 @@ def test_verify_password_malformed_input():
     assert verify_password("test", "") is False
     assert verify_password("test", "no_dollar_sign") is False
     assert verify_password("test", None) is False
+
+
+def test_admin_authentication_valid():
+    ok, admin_doc, msg = authenticate_admin(ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert ok is True
+    assert admin_doc is not None
+    assert admin_doc["role"] == "admin"
+    assert admin_doc["is_admin"] is True
+    assert "successful" in msg.lower()
+
+
+def test_admin_authentication_invalid():
+    ok, admin_doc, msg = authenticate_admin(ADMIN_EMAIL, "wrong_admin_pw")
+    assert ok is False
+    assert admin_doc is None
+
+    ok2, _, _ = authenticate_admin("unknown@admin.com", "any_password")
+    assert ok2 is False
+
+    ok3, _, _ = authenticate_admin("", "")
+    assert ok3 is False
 

@@ -14,6 +14,10 @@ MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 MONGODB_DATABASE = os.getenv("MONGODB_DATABASE", "ai_interview_system")
 USE_MOCK_DB = os.getenv("USE_MOCK_DB", "false").lower() in ("true", "1", "yes")
 
+# Administrator Credentials (Separate Administrative Role)
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@interviewprep.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
 # Technical Assessment Topics (10 standard topics)
 TOPICS = [
     "Python Programming",

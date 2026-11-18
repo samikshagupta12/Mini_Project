@@ -1,4 +1,4 @@
-"""Admin and Interview Question Management Module with Live API Streaming."""
+"""Admin and Interview Question Management Module with Live API Streaming and Role-Based Access Control."""
 from datetime import datetime, timezone
 import uuid
 import streamlit as st
@@ -8,11 +8,61 @@ from database.collections import get_questions_collection
 from database.seed_questions import seed_database
 from database.api_fetcher import sync_dynamic_questions_to_db
 from utils.validators import validate_question
+from utils.session_manager import is_admin_logged_in, get_current_admin, set_current_admin, clear_admin_session, get_current_student
+from utils.auth import authenticate_admin
+from ml.predict import get_model_status, ensure_model_initialized
 
 
 def render_admin_questions_page():
     st.title("⚙️ Admin & Question Management")
     st.write("Manage the technical interview question repository in MongoDB, inspect existing records, or stream dynamic questions from online APIs.")
+
+    # ----------------- ADMINISTRATOR ROLE ACCESS CONTROL GATE -----------------
+    if not is_admin_logged_in():
+        st.divider()
+        st.error("🛡️ **Administrator Privileges Required**")
+        st.write(
+            "This administrative section is strictly restricted to system administrators. "
+            "Regular students and unauthenticated users cannot view or modify the core question repository, "
+            "trigger database re-seeding, or execute model maintenance."
+        )
+
+        current_student = get_current_student()
+        if current_student:
+            st.warning(
+                f"⚠️ You are currently signed in under student account: **{current_student.get('name')}** (`{current_student.get('email')}`). "
+                "Students do not have administrative authorization."
+            )
+
+        with st.container():
+            st.markdown("#### 🔐 Administrator Sign In")
+            with st.form("admin_gate_login_form"):
+                admin_email = st.text_input("Administrator Email", value="admin@interviewprep.com")
+                admin_password = st.text_input("Administrator Password", type="password")
+                submit_admin = st.form_submit_button("🛡️ Authenticate Administrator", use_container_width=True)
+
+                if submit_admin:
+                    with st.spinner("Verifying administrative credentials..."):
+                        ok, admin_doc, msg = authenticate_admin(admin_email, admin_password)
+                    if ok and admin_doc:
+                        set_current_admin(admin_doc)
+                        st.success(f"🎉 {msg}")
+                        st.rerun()
+                    else:
+                        st.error(f"Authentication failed: {msg}")
+
+        st.info("💡 Default system credentials: `admin@interviewprep.com` / `admin123` (configured in `.env`).")
+        return
+
+    # ----------------- AUTHENTICATED ADMINISTRATOR WORKSPACE -----------------
+    current_admin = get_current_admin()
+    admin_bar1, admin_bar2 = st.columns([4, 1])
+    with admin_bar1:
+        st.success(f"🛡️ Active Session: **{current_admin.get('name', 'Administrator')}** (`{current_admin.get('email')}`) | Role: `ADMINISTRATOR`")
+    with admin_bar2:
+        if st.button("🚪 Exit Admin", use_container_width=True):
+            clear_admin_session()
+            st.rerun()
 
     questions_col = get_questions_collection()
     if questions_col is None:
@@ -57,6 +107,31 @@ def render_admin_questions_page():
                     _, inserted, msg = sync_dynamic_questions_to_db(amount=api_batch)
                 st.success(msg)
                 st.rerun()
+
+    st.divider()
+
+    # Machine Learning Model Operations
+    st.subheader("🤖 Machine Learning Model Operations")
+    model_loaded, model_meta = get_model_status()
+    
+    ml_c1, ml_c2 = st.columns([3, 1])
+    with ml_c1:
+        if model_loaded and model_meta:
+            acc = model_meta.get("evaluation_metrics", {}).get("accuracy", 0.0)
+            trained_at = model_meta.get("trained_at", "Unknown")
+            st.info(f"✅ **Decision Tree Classifier:** Loaded & Ready | **Accuracy:** `{acc:.1%}` | **Last Trained:** `{trained_at}`")
+        else:
+            st.warning("⚠️ Decision Tree model artifact is currently missing or not loaded.")
+
+    with ml_c2:
+        if st.button("⚡ Force Re-train Model", use_container_width=True):
+            with st.spinner("Re-training Decision Tree model and updating artifacts..."):
+                ok, new_meta, retrain_msg = ensure_model_initialized(force_retrain=True)
+            if ok:
+                st.success(retrain_msg)
+                st.rerun()
+            else:
+                st.error(retrain_msg)
 
     st.divider()
 

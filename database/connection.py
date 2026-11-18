@@ -86,6 +86,54 @@ def check_connection() -> Tuple[bool, bool, str]:
     return True, is_mock, msg
 
 
+def get_connection_details() -> dict:
+    """
+    Returns structured connection metadata for clear UI status indicators.
+    """
+    is_available, is_mock, msg = check_connection()
+    target_host = MONGODB_URI.split("@")[-1].split("/")[0] if "@" in MONGODB_URI else MONGODB_URI.replace("mongodb://", "")
+    
+    if not is_available:
+        return {
+            "is_connected": False,
+            "is_mock": False,
+            "status": "disconnected",
+            "badge_text": "🔴 MongoDB: Disconnected",
+            "status_label": "Disconnected (Database Unreachable)",
+            "status_color": "red",
+            "host": target_host,
+            "database": MONGODB_DATABASE,
+            "message": msg,
+            "instructions": "Ensure your MongoDB service is running (e.g. `mongod --dbpath data/db`) or check your connection string in .env.",
+        }
+    elif is_mock:
+        return {
+            "is_connected": True,
+            "is_mock": True,
+            "status": "mock",
+            "badge_text": "🟡 DB: In-Memory Mock Mode",
+            "status_label": "In-Memory Mock Active (mongomock)",
+            "status_color": "orange",
+            "host": "in-memory (simulated)",
+            "database": MONGODB_DATABASE,
+            "message": msg,
+            "instructions": "Currently operating with an in-memory mock database. All collections, indexes, and queries function normally for this session. To switch to real MongoDB, start your local mongod service on port 27017 and set USE_MOCK_DB=false in .env.",
+        }
+    else:
+        return {
+            "is_connected": True,
+            "is_mock": False,
+            "status": "connected",
+            "badge_text": "🟢 MongoDB: Connected (Live)",
+            "status_label": "Connected (Real MongoDB)",
+            "status_color": "green",
+            "host": target_host,
+            "database": MONGODB_DATABASE,
+            "message": msg,
+            "instructions": f"Successfully connected to active MongoDB daemon at {target_host} ({MONGODB_DATABASE}).",
+        }
+
+
 def reset_connection():
     """Resets cached client and database instances."""
     global _client, _database, _is_mock

@@ -4,6 +4,7 @@ import hmac
 import secrets
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple, List
+from config.settings import ADMIN_EMAIL, ADMIN_PASSWORD
 from database.collections import get_students_collection, serialize_doc, to_object_id
 from utils.validators import validate_student_profile, validate_email
 
@@ -125,6 +126,47 @@ def authenticate_student(email: str, password: str) -> Tuple[bool, Optional[Dict
         return True, serialize_doc(student), "Login successful!"
     else:
         return False, None, "Incorrect password. Please verify and try again."
+
+
+def authenticate_admin(email: str, password: str) -> Tuple[bool, Optional[Dict[str, Any]], str]:
+    """
+    Authenticates an administrator with a dedicated administrative role.
+    Supports system admin credentials configured via environment variables
+    as well as MongoDB accounts designated with role='admin'.
+    Returns: (is_authenticated, admin_doc, status_message)
+    """
+    clean_email = email.strip().lower()
+    if not clean_email or not password:
+        return False, None, "Please enter both administrator email and password."
+
+    # 1. Verify against configured System Administrator credentials
+    if clean_email == ADMIN_EMAIL.strip().lower():
+        if password == ADMIN_PASSWORD:
+            admin_doc = {
+                "name": "System Administrator",
+                "email": ADMIN_EMAIL,
+                "role": "admin",
+                "is_admin": True,
+                "authenticated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            return True, admin_doc, "Administrator authentication successful!"
+        else:
+            return False, None, "Invalid administrator password."
+
+    # 2. Check MongoDB for registered user accounts carrying role='admin'
+    students_col = get_students_collection()
+    if students_col is not None:
+        user = students_col.find_one({"email": clean_email, "role": "admin"})
+        if user:
+            stored_hash = user.get("password_hash")
+            if stored_hash and verify_password(password, stored_hash):
+                admin_doc = serialize_doc(user)
+                admin_doc["is_admin"] = True
+                return True, admin_doc, "Administrator authentication successful!"
+            else:
+                return False, None, "Invalid administrator password."
+
+    return False, None, "No administrator account found with this email."
 
 
 def get_or_create_demo_student(archetype: str = "ready") -> Dict[str, Any]:

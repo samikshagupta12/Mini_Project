@@ -9,8 +9,8 @@ from config.settings import (
     EDUCATION_LEVELS,
     PROGRAMMING_LANGUAGES,
 )
-from utils.auth import authenticate_student, register_student, get_or_create_demo_student
-from utils.session_manager import set_current_student
+from utils.auth import authenticate_student, authenticate_admin, register_student, get_or_create_demo_student
+from utils.session_manager import set_current_student, set_current_admin
 
 
 def render_login_page():
@@ -83,11 +83,16 @@ def render_login_page():
     col_center = st.columns([1, 6, 1])[1]
 
     with col_center:
-        auth_tabs = st.tabs(["🔐 Sign In", "✨ Create Student Account", "⚡ Instant Demo Evaluation"])
+        auth_tabs = st.tabs([
+            "🔐 Student Sign In",
+            "✨ Create Student Account",
+            "⚡ 1-Click Evaluation",
+            "🛡️ Administrator Access"
+        ])
 
-        # ----------------- TAB 1: LOGIN -----------------
+        # ----------------- TAB 1: STUDENT LOGIN -----------------
         with auth_tabs[0]:
-            st.markdown("#### Welcome Back")
+            st.markdown("#### Student Sign In")
             st.caption("Sign in with your student email and password to access your personalized dashboard.")
 
             with st.form("login_form", clear_on_submit=False):
@@ -214,7 +219,38 @@ def render_login_page():
                         st.rerun()
 
             st.write("---")
-            if st.button("👁️ Explore as Guest / Read-Only", use_container_width=True):
-                st.session_state.current_page = "Home Dashboard"
-                st.rerun()
+            st.caption("🔒 **Security Policy:** To protect candidate privacy and maintain accurate records, sign-in is required before accessing student-specific information.")
+
+        # ----------------- TAB 4: ADMINISTRATOR ACCESS -----------------
+        with auth_tabs[3]:
+            st.markdown("#### 🛡️ Administrator Portal")
+            st.caption("Restricted access for system administrators to manage question banks, perform database maintenance, and configure ML models.")
+
+            with st.form("admin_login_form", clear_on_submit=False):
+                admin_email = st.text_input(
+                    "Administrator Email",
+                    value="admin@interviewprep.com",
+                    placeholder="admin@interviewprep.com",
+                    key="admin_email_input"
+                )
+                admin_password = st.text_input(
+                    "Administrator Password",
+                    type="password",
+                    placeholder="Enter administrator password",
+                    key="admin_password_input"
+                )
+
+                admin_submitted = st.form_submit_button("🛡️ Sign In as Administrator", use_container_width=True)
+
+                if admin_submitted:
+                    with st.spinner("Verifying administrator credentials..."):
+                        success, admin_doc, msg = authenticate_admin(admin_email, admin_password)
+
+                    if success and admin_doc:
+                        set_current_admin(admin_doc)
+                        st.session_state.current_page = "Admin and Question Management"
+                        st.success(f"🎉 {msg}")
+                        st.rerun()
+                    else:
+                        st.error(f"Administrator access denied: {msg}")
 

@@ -8,6 +8,7 @@ from database.collections import (
     get_students_collection,
     to_object_id,
 )
+from database.connection import get_connection_details
 from utils.session_manager import get_current_student, set_current_student
 from modules.computation_engine import compute_entire_program
 
@@ -16,17 +17,23 @@ def render_home_dashboard():
     st.title("🎓 AI-Powered Interview Preparation System")
     st.markdown("##### Real-Time Skill Assessment, Empirical Diagnosis, & Machine Learning Readiness Analytics")
 
+    db_info = get_connection_details()
+    st.caption(f"🗄️ **Database Status:** {db_info['badge_text']} | Target: `{db_info['database']}` ({db_info['host']})")
+
     students_col = get_students_collection()
     assessments_col = get_assessments_collection()
     readiness_col = get_readiness_collection()
 
     current_student = get_current_student()
 
-    # Guest Warning / Sign-In Prompt
+    # Authentication Guard - Login Required for Student Information
     st.divider()
     if not current_student:
-        st.warning("👋 **You are currently viewing as a Guest.**")
-        st.write("Sign in or create a student account to evaluate your skill profile, predict interview readiness, and generate your custom learning roadmap.")
+        st.error("🔒 **Sign-In Required to Access Student Dashboard**")
+        st.write(
+            "Candidate profiles, skill assessment histories, personalized roadmaps, and Decision Tree interview readiness "
+            "predictions are student-specific. Please sign in or use the 1-Click Evaluation Mode to access your preparation dashboard."
+        )
         
         c1, c2 = st.columns(2)
         with c1:
@@ -34,7 +41,7 @@ def render_home_dashboard():
                 st.session_state.current_page = "Login / Register"
                 st.rerun()
         with c2:
-            if st.button("⚡ Quick Demo Evaluation", use_container_width=True):
+            if st.button("⚡ Quick Demo Evaluation Mode", use_container_width=True):
                 st.session_state.current_page = "Login / Register"
                 st.rerun()
 

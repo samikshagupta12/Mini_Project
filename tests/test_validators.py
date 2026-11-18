@@ -112,3 +112,14 @@ def test_validate_question_invalid():
     assert ok is False
     assert len(errors) >= 4
 
+
+def test_database_connection_details():
+    from database.connection import get_connection_details
+    details = get_connection_details()
+    assert isinstance(details, dict)
+    assert "is_connected" in details
+    assert "badge_text" in details
+    assert "status_label" in details
+    assert "database" in details
+    assert "instructions" in details
+

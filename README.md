@@ -123,19 +123,23 @@ Traditional interview preparation is often unguided, leading students to solve a
 | **Model Serialization** | Joblib | `^1.3.0` | High-performance serialization of trained scikit-learn models |
 | **Authentication** | hashlib, secrets | `Python Stdlib` | Salted PBKDF2-HMAC-SHA256 password hashing & timing-safe verification |
 | **Configuration** | python-dotenv | `^1.0.0` | Secure environment variable parsing from `.env` files |
-| **Testing Framework** | Pytest | `^7.4.0` | Automated test discovery, execution, and validation fixtures (25 tests) |
+| **Testing Framework** | Pytest | `^7.4.0` | Automated test discovery, execution, and validation fixtures (30 tests) |
 
 ---
 
 ## 5. Application Modules & User Interface
 
-The platform consists of specialized modules accessible via the sidebar navigation:
+The platform features an adaptive, role-aware sidebar navigation structure designed to prevent cognitive clutter and strictly protect student privacy:
+- **Unauthenticated View:** Displays only Sign In, Registration, 1-Click Evaluation, and Administrator access options. Student-specific data is strictly gated behind authentication.
+- **Student Workspace:** Provides an intuitive Section Switcher (`Core Hub`, `Assessments & Diagnostics`, `Practice & Roadmap`, `ML & Analytics`, or `All Modules`) allowing candidates to focus on specific tasks without distraction.
+- **Administrator Hub:** Separate workspace restricted to verified administrators for question curation, DB maintenance, and ML model retraining.
 
 0. **🔐 Authentication & Registration Portal (`modules/login.py`):**
    - High-end glassmorphism and card-styled login portal.
    - Secure sign-in using salted PBKDF2-HMAC-SHA256 password hashing (100,000 iterations).
    - Full student registration with unique email indexing in MongoDB.
    - 1-Click Evaluation Mode with pre-configured candidate profiles (`Alice Johnson - Software Engineer` and `Bob Smith - Data Scientist`) for instant faculty demonstrations.
+   - Dedicated Administrator Access portal authenticating the separate administrative role.
 
 1. **🏠 Home Dashboard (`modules/home_dashboard.py`):**
    - High-level student summary card and active target role display.
@@ -218,10 +222,11 @@ The platform consists of specialized modules accessible via the sidebar navigati
    - Interactive attempt selector enabling inspection of historical score snapshots.
 
 10. **⚙️ Admin & Question Management (`modules/admin_questions.py`):**
-    - Question repository statistics (total documents, topics covered, difficulty tiers).
-    - Question search engine supporting keyword search, tags, and topic filtering.
-    - Full-featured question authoring form with schema validation.
-    - One-click default question seeder populating MongoDB with 32+ curated technical questions.
+    - **Role-Based Protection:** Strictly gated by a separate Administrator role (`admin@interviewprep.com` / `admin123`). Non-administrators are blocked by an Administrator Authentication Shield.
+    - **Question Repository Statistics:** Real-time metrics on total questions, API-streamed questions, topics, and difficulty tiers.
+    - **Database Maintenance:** One-click default question seeder (32+ curated technical questions) and live API ingestion from OpenTDB.
+    - **ML Model Lifecycle Control:** Direct interface to inspect model accuracy, hyperparameter configurations, and trigger model retraining / re-initialization on demand.
+    - **Custom Question Authoring:** Form with schema validation for adding original interview questions.
 
 ---
 
