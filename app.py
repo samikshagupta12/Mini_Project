@@ -1,17 +1,27 @@
 """
 AI-POWERED INTERVIEW PREPARATION SYSTEM
-Main Streamlit Application Entrypoint with Simpler Navigation,
-Role-Based Access Control, Clear Database Status, and Automated Model Initialization.
+Main Streamlit Application Entrypoint with Dual Database Architecture:
+- Mode 1: In-Memory Demo Mode (mongomock) - Default, Zero Installation Required.
+- Mode 2: Real MongoDB Mode (Local mongod or MongoDB Atlas) - Permanent Disk Storage.
+Ensures zero crashes, streamlined navigation, role-based access control, and complete feature coverage.
 """
 import streamlit as st
 from config.settings import MONGODB_DATABASE, MONGODB_URI
-from database.connection import check_connection, get_database, get_connection_details
+from database.connection import (
+    check_connection,
+    get_database,
+    get_connection_details,
+    reset_connection,
+    test_and_set_mongo_uri,
+)
 from database.collections import init_db_indexes
 from utils.session_manager import (
     init_session_state,
     get_current_student,
     get_current_admin,
     is_admin_logged_in,
+    is_demo_mode,
+    set_demo_mode,
     clear_current_student,
     clear_admin_session,
     clear_all_sessions,
@@ -29,7 +39,7 @@ st.set_page_config(
 # 1. Initialize Session State
 init_session_state()
 
-# 2. Database Connection Initialization & Indexing
+# 2. Database Connection Initialization & Automatic Indexing
 is_db_connected, is_db_mock, db_status_msg = check_connection()
 if is_db_connected:
     db = get_database()
@@ -38,21 +48,52 @@ if is_db_connected:
 # 3. Model Initialization (Automatically trains if artifacts are missing)
 model_ready, model_meta, model_msg = ensure_model_initialized()
 
-# ----------------- SIDEBAR HEADER & DB STATUS -----------------
+# ----------------- SIDEBAR HEADER & EXPLICIT DB STATUS -----------------
 st.sidebar.title("🎓 AI Interview Prep")
 
-# Clear Database Connection Status Indicator
 db_details = get_connection_details()
+
+# STATUS DISPLAY 1: REAL MONGODB CONNECTED & PERSISTENT
 if db_details["is_connected"] and not db_details["is_mock"]:
-    st.sidebar.success(f"{db_details['badge_text']}\n\nHost: `{db_details['host']}`")
-elif db_details["is_mock"]:
-    st.sidebar.warning(f"{db_details['badge_text']}")
-    with st.sidebar.expander("ℹ️ Connection Details"):
-        st.caption(db_details["instructions"])
+    st.sidebar.success(f"{db_details['badge_text']}\n\nHost: `{db_details['host']}`\n\nDatabase: `{db_details['database']}`")
+    st.sidebar.caption("💾 **Permanent Storage:** Active (All data saved to disk/cloud)")
+    
+    with st.sidebar.expander("🎭 Switch to Demo Mode"):
+        st.caption("Need an isolated in-memory environment for a presentation or grading?")
+        if st.button("Enable Demo Mode (In-Memory)", key="enable_demo_btn", use_container_width=True):
+            set_demo_mode(True)
+            reset_connection()
+            st.rerun()
+
+# STATUS DISPLAY 2: DEMO MODE ACTIVE (IN-MEMORY MOCK)
 else:
-    st.sidebar.error(f"{db_details['badge_text']}")
-    with st.sidebar.expander("⚠️ Database Offline"):
-        st.caption(db_details["instructions"])
+    st.sidebar.warning(f"{db_details['badge_text']}")
+    st.sidebar.caption(db_details["storage_warning"])
+    
+    with st.sidebar.expander("🔌 Connect Real MongoDB / Atlas"):
+        st.caption("Need permanent storage? Connect to a local MongoDB daemon or MongoDB Atlas cloud cluster.")
+        uri_input = st.text_input(
+            "MongoDB Connection URI",
+            value=st.session_state.get("custom_mongo_uri", MONGODB_URI),
+            key="side_uri_input",
+            help="e.g. mongodb://localhost:27017 or mongodb+srv://user:pass@cluster0.mongodb.net/?retryWrites=true&w=majority"
+        )
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            if st.button("Connect", key="side_connect_btn", use_container_width=True):
+                with st.spinner("Testing connection..."):
+                    ok, conn_msg = test_and_set_mongo_uri(uri_input)
+                if ok:
+                    st.success(conn_msg)
+                    set_demo_mode(False)
+                    st.rerun()
+                else:
+                    st.error(conn_msg)
+        with col_c2:
+            if st.button("Retry Local", key="side_retry_btn", use_container_width=True):
+                set_demo_mode(False)
+                reset_connection()
+                st.rerun()
 
 st.sidebar.divider()
 
@@ -88,26 +129,20 @@ else:
 
 st.sidebar.divider()
 
-# ----------------- SIMPLER, ROLE-AWARE NAVIGATION STRUCTURE -----------------
+# ----------------- STREAMLINED NAVIGATION -----------------
 
-# Case 1: Unauthenticated Guest -> Strictly require login before viewing student info
+# Case 1: Unauthenticated Guest -> Direct access to Login/Register or Admin Access
 if not current_student and not admin_active:
     st.sidebar.markdown("### 🧭 Navigation")
     guest_pages = ["Login / Register", "Admin Access Portal"]
-    
-    # Map selection
-    current_idx = 1 if st.session_state.current_page == "Admin and Question Management" else 0
-    guest_choice = st.sidebar.radio(
-        "Select Portal",
-        guest_pages,
-        index=current_idx,
-    )
+    current_idx = 1 if st.session_state.current_page in ("Admin and Question Management", "Admin Access Portal") else 0
+    guest_choice = st.sidebar.radio("Select Portal", guest_pages, index=current_idx)
     if guest_choice == "Login / Register":
         st.session_state.current_page = "Login / Register"
     else:
         st.session_state.current_page = "Admin and Question Management"
 
-# Case 2: Administrator Session -> Streamlined Admin Controls
+# Case 2: Administrator Session -> Administrator Controls
 elif admin_active:
     st.sidebar.markdown("### 🛡️ Administrator Hub")
     admin_pages = [
@@ -121,11 +156,10 @@ elif admin_active:
     else:
         st.session_state.current_page = "Home Dashboard"
 
-# Case 3: Authenticated Student -> Streamlined Category-Filtered Navigation
+# Case 3: Authenticated Student -> Category-Filtered Navigation
 else:
     st.sidebar.markdown("### 🧭 Student Workspace")
     
-    # Simplified Category Switcher for uncluttered navigation
     CATEGORY_MAP = {
         "📋 All Modules": [
             "Home Dashboard",
@@ -166,7 +200,6 @@ else:
 
     available_pages = CATEGORY_MAP[selected_cat]
 
-    # Ensure current page is in available list or reset to first
     if st.session_state.current_page not in available_pages:
         st.session_state.current_page = available_pages[0]
 
@@ -180,19 +213,39 @@ else:
 
 st.sidebar.divider()
 
-# Display Model Status Pill in Sidebar
+# Display Model Status in Sidebar
 if model_ready and model_meta:
     acc = model_meta.get("evaluation_metrics", {}).get("accuracy", 0.0)
     st.sidebar.caption(f"🤖 **Decision Tree ML:** Active (`{acc:.1%}` Accuracy)")
 else:
     st.sidebar.caption("🤖 **Decision Tree ML:** Offline")
 
-st.sidebar.caption("Database: MongoDB / PyMongo")
+st.sidebar.caption("Storage: MongoDB & In-Memory Demo")
+
+
+# ----------------- NON-BLOCKING TOP NOTIFICATION BANNERS -----------------
+# If Real MongoDB was attempted but offline, display a helpful notice without blocking the user
+if db_details.get("real_mongo_failed", False):
+    st.warning(
+        f"⚠️ **Real MongoDB is Offline:** The system could not connect to `{db_details['host']}`. "
+        "The application has automatically activated **Demo Mode (In-Memory)** with full functionality. "
+        "All 10 modules, assessments, and ML models are active. Note that data will not persist to disk after server shutdown."
+    )
+    with st.expander("🛠️ How to Connect Real MongoDB or Use Cloud Atlas"):
+        guide = db_details.get("beginner_guide", {})
+        st.write(guide.get("what_happened", "Could not reach MongoDB daemon."))
+        st.markdown("**Local Windows Command (Run in Admin PowerShell):**")
+        st.code("net start MongoDB", language="powershell")
+        st.markdown("**Cloud MongoDB Atlas (Free Cluster):**")
+        st.caption("Paste your connection string into the sidebar expander or into your `.env` file.")
+        if st.button("🚀 Dismiss Banner & Continue in Demo Mode", use_container_width=True):
+            set_demo_mode(True)
+            reset_connection()
+            st.rerun()
 
 # ----------------- PAGE ROUTING & ACCESS PROTECTION -----------------
 target_page = st.session_state.current_page
 
-# Enforce login protection for student-specific pages
 STUDENT_ONLY_PAGES = (
     "Home Dashboard",
     "Student Profile",
@@ -206,7 +259,6 @@ STUDENT_ONLY_PAGES = (
 )
 
 if target_page in STUDENT_ONLY_PAGES and not current_student and not admin_active:
-    # Force Login page for unauthenticated access attempts
     from modules.login import render_login_page
     render_login_page()
 

@@ -65,3 +65,49 @@ def test_ensure_model_initialization_when_file_missing(tmp_path):
     assert MODEL_METADATA_PATH.exists()
     assert metadata["evaluation_metrics"]["accuracy"] > 0.60
 
+
+def test_cross_validation_in_metadata():
+    ok, metadata, msg = ensure_model_initialized(force_retrain=False)
+    assert ok is True
+    assert "cross_validation" in metadata
+    cv = metadata["cross_validation"]
+    assert cv["n_splits"] == 5
+    assert "mean_accuracy" in cv
+    assert "std_accuracy" in cv
+    assert len(cv["fold_accuracies"]) == 5
+    assert cv["mean_accuracy"] > 0.70
+
+
+def test_per_class_performance_in_metadata():
+    ok, metadata, msg = ensure_model_initialized(force_retrain=False)
+    assert ok is True
+    assert "per_class_performance" in metadata
+    per_class = metadata["per_class_performance"]
+    for cls_name in READINESS_CLASSES:
+        assert cls_name in per_class
+        metrics = per_class[cls_name]
+        assert "precision" in metrics
+        assert "recall" in metrics
+        assert "f1_score" in metrics
+        assert "support" in metrics
+        assert metrics["support"] > 0
+
+
+def test_synthetic_dataset_isolation_file():
+    from config.settings import SYNTHETIC_DATASET_PATH
+    import pandas as pd
+    assert SYNTHETIC_DATASET_PATH.exists()
+    df = pd.read_csv(SYNTHETIC_DATASET_PATH)
+    assert len(df) >= 300
+    assert "Overall Average Score" in df.columns
+    assert "Target" in df.columns
+
+
+def test_academic_demonstration_notice_and_non_guarantee():
+    scores = {topic: 80.0 for topic in TOPICS}
+    res = predict_readiness(scores)
+    assert res.get("is_academic_demonstration") is True
+    notice = res.get("notice", "").lower()
+    assert "academic demonstration" in notice
+    assert "not a guaranteed probability" in notice
+

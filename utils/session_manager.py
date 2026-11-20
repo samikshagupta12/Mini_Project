@@ -3,6 +3,9 @@ import streamlit as st
 from typing import Optional, Dict, Any
 
 
+from config.settings import USE_MOCK_DB
+
+
 def init_session_state():
     """Initializes all necessary Streamlit session state keys if not already set."""
     defaults = {
@@ -20,10 +23,21 @@ def init_session_state():
         "system_computation": None,
         "notification": None,
         "nav_category": "All Modules",
+        "demo_mode": USE_MOCK_DB,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = val
+
+
+def is_demo_mode() -> bool:
+    """Returns True if the current session is running in Presentation / Demo Mode."""
+    return bool(st.session_state.get("demo_mode", False))
+
+
+def set_demo_mode(enabled: bool):
+    """Activates or deactivates Presentation / Demo Mode."""
+    st.session_state.demo_mode = enabled
 
 
 def get_current_student() -> Optional[Dict[str, Any]]:

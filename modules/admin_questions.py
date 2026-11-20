@@ -4,7 +4,7 @@ import uuid
 import streamlit as st
 import pandas as pd
 from config.settings import TOPICS, DIFFICULTY_LEVELS, QUESTION_TYPES, JOB_ROLES
-from database.collections import get_questions_collection
+from database.collections import get_questions_collection, get_research_data_collection
 from database.seed_questions import seed_database
 from database.api_fetcher import sync_dynamic_questions_to_db
 from utils.validators import validate_question
@@ -224,3 +224,31 @@ def render_admin_questions_page():
                 "Question": d.get("question", "")[:80] + ("..." if len(d.get("question", "")) > 80 else ""),
             })
         st.dataframe(pd.DataFrame(q_table), use_container_width=True, hide_index=True)
+
+    # ----------------- ANONYMIZED RESEARCH DATASET SECTION -----------------
+    st.divider()
+    st.subheader("📊 Anonymized Research Dataset (Continuous Model Improvement)")
+    research_col = get_research_data_collection()
+    if research_col is not None:
+        research_count = research_col.count_documents({})
+        st.write(
+            f"**Voluntary Anonymized Records Collected:** `{research_count}` observations. "
+            "All records are strictly de-identified (no names, emails, IP addresses, or student IDs)."
+        )
+        if research_count > 0:
+            records = list(research_col.find({}, {"_id": 0}).sort("created_at", -1).limit(50))
+            flat_records = []
+            for r in records:
+                created_val = r.get("created_at")
+                time_str = created_val.strftime("%Y-%m-%d %H:%M") if hasattr(created_val, "strftime") else str(created_val)
+                flat_records.append({
+                    "Overall Average": f"{r.get('overall_average', 0)}%",
+                    "Target Role": r.get("target_role", "N/A"),
+                    "Reported Outcome": r.get("actual_outcome", "Self-Assessment"),
+                    "Predicted Class": r.get("model_predicted_readiness", "N/A"),
+                    "Consent Status": "Granted (PII-stripped)",
+                    "Logged At": time_str,
+                })
+            st.dataframe(pd.DataFrame(flat_records), use_container_width=True, hide_index=True)
+        else:
+            st.caption("No voluntary research records submitted yet. As students take assessments or report outcomes with consent enabled, de-identified records will populate here.")

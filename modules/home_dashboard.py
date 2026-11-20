@@ -18,7 +18,12 @@ def render_home_dashboard():
     st.markdown("##### Real-Time Skill Assessment, Empirical Diagnosis, & Machine Learning Readiness Analytics")
 
     db_info = get_connection_details()
-    st.caption(f"🗄️ **Database Status:** {db_info['badge_text']} | Target: `{db_info['database']}` ({db_info['host']})")
+    if db_info.get("storage_warning"):
+        st.warning(db_info["storage_warning"])
+    elif db_info.get("is_permanent"):
+        st.success(f"💾 **Permanent Storage Active:** Connected to Real MongoDB (`{db_info['host']}` / `{db_info['database']}`). All records are permanently persisted to disk.")
+    else:
+        st.caption(f"🗄️ **Database Status:** {db_info['badge_text']} | Target: `{db_info['database']}` ({db_info['host']})")
 
     students_col = get_students_collection()
     assessments_col = get_assessments_collection()

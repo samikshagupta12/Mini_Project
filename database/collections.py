@@ -67,6 +67,12 @@ def get_practice_sessions_collection(db: Optional[Database] = None) -> Optional[
     return db["practice_sessions"] if db is not None else None
 
 
+def get_research_data_collection(db: Optional[Database] = None) -> Optional[Collection]:
+    """Voluntary, anonymized assessment & outcome records collected for academic model improvement."""
+    db = db or get_database()
+    return db["anonymized_research_data"] if db is not None else None
+
+
 def init_db_indexes(db: Optional[Database] = None):
     """Initializes indexes on all collections for performance and uniqueness."""
     db = db or get_database()
@@ -91,6 +97,9 @@ def init_db_indexes(db: Optional[Database] = None):
         
         # Practice sessions: index on student_id
         db["practice_sessions"].create_index([("student_id", pymongo.ASCENDING), ("created_at", pymongo.DESCENDING)])
+        
+        # Anonymized research dataset: index on created_at
+        db["anonymized_research_data"].create_index([("created_at", pymongo.DESCENDING)])
         return True
     except Exception as e:
         # For mock databases or environments where indexes might be restricted

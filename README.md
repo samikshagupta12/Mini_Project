@@ -8,7 +8,7 @@
 [![Scikit-Learn](https://img.shields.io/badge/scikit--learn-Decision%20Trees-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-PyMongo-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Tests: Pytest](https://img.shields.io/badge/Tests-17%20Passed-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](https://pytest.org/)
+[![Tests: Pytest](https://img.shields.io/badge/Tests-42%20Passed-brightgreen?style=for-the-badge&logo=pytest&logoColor=white)](https://pytest.org/)
 
 </div>
 
@@ -30,7 +30,7 @@
 7. [Database Architecture & MongoDB Schema](#7-database-architecture--mongodb-schema)
    - [Collection Specifications](#collection-specifications)
    - [Indexing Strategies](#indexing-strategies)
-   - [Fault-Tolerant Mock Fallback](#fault-tolerant-mock-fallback)
+   - [Database Modes & Storage Persistence](#database-modes--storage-persistence)
 8. [Directory Structure](#8-directory-structure)
 9. [Installation & Setup Instructions](#9-installation--setup-instructions)
 10. [Execution Guide](#10-execution-guide)
@@ -257,8 +257,8 @@ Where:
 ### Target Classes
 $$\mathcal{Y} \in \{\text{"Beginner / Needs Improvement"}, \text{"Intermediate / Partially Ready"}, \text{"Interview Ready"}\}$$
 
-### Synthetic Training Data Generation
-To satisfy academic project evaluation without requiring private student records, `ml/train_model.py` generates 800 synthetic student observations based on pedagogical heuristics:
+### Synthetic Training Data Generation & Dataset Isolation
+To satisfy academic project evaluation without exposing private student records, `ml/train_model.py` generates 800 synthetic student observations based on pedagogical heuristics:
 - **Beginner Archetype (30%):** $\mu = 38, \sigma = 12$ across topics.
 - **Intermediate Archetype (45%):** $\mu = 64, \sigma = 11$ across topics.
 - **Interview Ready Archetype (25%):** $\mu = 83, \sigma = 8$ across topics.
@@ -267,30 +267,56 @@ To satisfy academic project evaluation without requiring private student records
   * Candidates with $\bar{s} < 50\%$ or foundational scores in DSA $< 42\%$ and Problem-Solving $< 42\%$ are labeled **Beginner / Needs Improvement**.
   * All remaining candidates are labeled **Intermediate / Partially Ready**.
 - **Label Noise:** 3% randomized label noise is injected to simulate human interviewer borderline variance and prevent artificial 100% test accuracy.
+- **Strict Data Isolation:** Generated synthetic observations are exported directly to `models/synthetic_training_dataset.csv`. Synthetic training records are **never** commingled or saved into MongoDB student assessment collections (`students`, `assessments`). MongoDB stores exclusively authentic, student-submitted data.
 
-### Model Evaluation & Confusion Matrix
-Evaluated on an 80/20 stratified holdout test set (160 test instances):
+### Model Evaluation: Holdout Testing & 5-Fold Cross-Validation
+To guarantee statistical rigor beyond a single train/test split, the Decision Tree Classifier is evaluated using both an 80/20 stratified holdout partition (160 test instances) and **5-Fold Stratified Cross-Validation** across the entire dataset:
 
+#### 1. 5-Fold Stratified Cross-Validation Summary
+| Metric | Mean Cross-Validation Score | Standard Deviation ($\sigma$) |
+| :--- | :---: | :---: |
+| **CV Accuracy** | **95.75%** | $\pm 2.48\%$ |
+| **CV Weighted F1-Score** | **95.74%** | $\pm 2.50\%$ |
+| **CV Weighted Precision** | **95.94%** | $\pm 2.36\%$ |
+| **CV Weighted Recall** | **95.75%** | $\pm 2.48\%$ |
+
+#### 2. Holdout Test Set Performance (80/20 Split)
 | Metric | Weighted Average | Macro Average |
 | :--- | :---: | :---: |
-| **Accuracy** | **95.62%** | — |
-| **Precision** | **0.9568** | **0.9575** |
-| **Recall** | **0.9562** | **0.9546** |
-| **F1-Score** | **0.9559** | **0.9554** |
+| **Accuracy** | **95.63%** | — |
+| **Precision** | **0.9566** | **0.9592** |
+| **Recall** | **0.9563** | **0.9541** |
+| **F1-Score** | **0.9559** | **0.9560** |
 
-#### Test Set Confusion Matrix
+#### 3. Per-Class Classification Report
+| Readiness Tier | Precision | Recall | F1-Score | Holdout Support |
+| :--- | :---: | :---: | :---: | :---: |
+| **Beginner / Needs Improvement** | **0.9565** | **1.0000** | **0.9778** | 44 |
+| **Intermediate / Partially Ready** | **0.9474** | **0.9600** | **0.9536** | 75 |
+| **Interview Ready** | **0.9737** | **0.9024** | **0.9367** | 41 |
+
+#### 4. Holdout Confusion Matrix
 ```
                          PREDICTED
                  Needs Impr.  Partially Ready  Interview Ready
 ACTUAL
-Needs Impr.          45              3                0
-Partially Ready       2             68                2
-Interview Ready       0              0               40
+Needs Impr.          44              0                0
+Partially Ready       2             72                1
+Interview Ready       0              4               37
 ```
 
-### Academic Disclaimer & Ethical AI
-> **Academic Transparency Notice:**
-> The Decision Tree Classifier deployed in this platform is trained on a synthetic demonstration dataset constructed for academic evaluation. Predictions provide diagnostic guidance and skill development tendencies. They do not constitute an empirical guarantee of commercial employment or interview outcomes.
+### Academic Demonstration Disclaimer & Ethical AI Guidance
+> **Academic Transparency Notice & Confidence Reframing:**  
+> The Decision Tree Classifier deployed in this platform is an **academic demonstration prototype** trained on synthetic pedagogical rules.  
+> 
+> **Important Distinction: Model Confidence vs. Hiring Probability:**  
+> The prediction confidence score ($C\%$) reflects the classifier's internal mathematical alignment with the student's corresponding readiness archetype. **It does NOT represent a real-world probability of being hired or receiving a commercial job offer.** Live technical interviews involve qualitative dimensions including behavioral communication, whiteboard problem breakdown, team dynamic fit, and fluctuating organizational hiring bars.
+
+### Voluntary, Anonymized Research Data Collection
+To establish an empirical foundation for future supervised model retraining without compromising candidate privacy:
+- Students can optionally consent via a checkbox (`[x] Contribute Anonymized Research Data`) during skill assessment submission.
+- Consented records are de-identified (all names, emails, student IDs, and IP addresses are completely stripped) and stored in MongoDB's `anonymized_research_data` collection.
+- Students can also submit voluntary post-interview outcomes (e.g. *Cleared Technical Round*, *Received Offer*, *Identified Specific Skill Gaps*) through the readiness interface, linking real-world ground truth to anonymized skill profiles for iterative machine learning research.
 
 ---
 
@@ -433,8 +459,29 @@ The database layer (`database/collections.py`) automatically ensures the followi
 - `learning_roadmaps`: Compound index on `(student_id, assessment_id)`.
 - `practice_sessions`: Compound index on `(student_id, created_at DESC)`.
 
-### Fault-Tolerant Mock Fallback
-In production academic evaluations where a live MongoDB daemon (`mongod`) or cloud cluster might not be active on localhost, `database/connection.py` employs a non-blocking connection check (`serverSelectionTimeoutMS=2000`). If the connection times out, it gracefully instantiates an in-memory database simulation using `mongomock`. This ensures that zero unhandled database exceptions crash the application during live presentations.
+### Database Modes & Storage Persistence
+
+The platform features an intentional, robust dual-mode database architecture that allows the application to run **immediately without requiring MongoDB installation**, while maintaining full support for permanent database persistence when configured:
+
+| Mode | Storage Engine | Default | Persistence | Use Case | Indicator Badge |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| **Mode 1: Demo Mode** | `mongomock` Virtual Engine | **YES (Default)** | **In-Memory Non-Permanent** (Reset when process terminates) | Immediate Out-of-the-Box Execution, Viva Demos, Offline Testing | `🟡 Demo Mode (In-Memory Database Active)` |
+| **Mode 2: Real MongoDB Mode** | Local `mongod` or MongoDB Atlas Cluster | Optional | **Permanent Disk/Cloud Storage** (Survives application restarts) | Long-Term Tracking & Production Student Usage | `🟢 Real MongoDB (Persistent Storage Active)` |
+
+#### 1. Mode 1: In-Memory Demo Mode (Default)
+- **Zero Installation Required:** Users and evaluators can download, double-click `run.bat`, and immediately run the complete application without installing MongoDB Community Server.
+- **Auto-Seeded Foundational Questions:** On first startup, the mock database automatically loads all 32 curated technical interview questions covering all 10 computer science disciplines.
+- **Full Multi-Module Support:** Student registration, login, skill assessments, CART Decision Tree ML predictions, roadmaps, and analytics function seamlessly.
+- **Clear Storage Notice:** The sidebar and dashboard explicitly indicate that demo data is temporary for the active session, avoiding false permanent storage assumptions.
+
+#### 2. Mode 2: Real MongoDB Mode (Persistent Disk/Cloud Storage)
+- **Local & Cloud Atlas Support:** Supports standard local daemons (`mongodb://localhost:27017`) and free MongoDB Atlas connection URIs (`mongodb+srv://...`).
+- **Connection Verification via Ping:** Verifies active connectivity using MongoDB's administrative `ping` command upon client pool initialization.
+- **Non-Blocking Resilience:** If Real MongoDB is requested (`USE_MOCK_DB=false`) but the database daemon is offline, the system **never crashes or blocks the entire screen**. Instead, it renders an informative warning banner with connection troubleshooting options and safely activates Demo Mode so students and evaluators can continue their workflow without interruption.
+- **1-Click Switching:** Users can test and connect a custom MongoDB URI directly from the Streamlit sidebar without modifying configuration files.
+
+#### 3. Practice Answers Storage Policy
+In accordance with academic privacy and performance principles, student practice scratchpad answers are held in transient Streamlit session state and are **never** persisted to MongoDB. MongoDB is strictly reserved for core user data: student profiles, standardized skill assessments, AI learning roadmaps, and ML readiness predictions.
 
 ---
 
@@ -501,56 +548,62 @@ AI_Interview/
 
 ## 9. Installation & Setup Instructions
 
-### Prerequisites
+### Quick Windows Execution (2-Click Zero-Setup Method)
+
+The application can be run immediately on Windows without installing or configuring MongoDB:
+
+1. **Extract Project Folder:** Extract `AI_Interview_System.zip` to your desired directory.
+2. **Run Automated Setup:** Double-click **`setup.bat`**.  
+   *(Verifies Python, configures `.env` with Demo Mode enabled, installs dependencies, and initializes the Decision Tree ML model).*
+3. **Launch Application:** Double-click **`run.bat`**.  
+   *(Launches Streamlit at `http://localhost:8501` in your browser).*
+4. **Start Practicing:** Register a student account or click **1-Click Evaluation** to begin immediately!
+
+---
+
+### Manual Setup Instructions (All Operating Systems)
+
+#### Prerequisites
 - **Python:** Version `3.10` or higher (`3.13` supported).
 - **Package Manager:** `pip`.
-- **Database (Optional):** Local MongoDB Community Server or a free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster URI.
+- **Database (Optional):** None required for Demo Mode! For permanent storage, install local MongoDB or use a free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster URI.
 
-### Step 1: Open the Project Directory
+#### Step 1: Open the Project Directory
 ```powershell
 cd C:\Users\samik\Desktop\AI_Interview
 ```
 
-### Step 2: Configure Environment Variables
+#### Step 2: Configure Environment Variables
 Copy `.env.example` to create `.env`:
 ```powershell
 Copy-Item .env.example .env
 ```
-Ensure your `.env` contains:
+Default `.env` configuration (In-Memory Demo Mode active):
 ```ini
+USE_MOCK_DB=true
+DEMO_MODE=true
 MONGODB_URI=mongodb://localhost:27017
 MONGODB_DATABASE=ai_interview_system
-USE_MOCK_DB=false
 ```
-*(If using MongoDB Atlas, replace `MONGODB_URI` with your connection string: `mongodb+srv://<user>:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority`)*.
+*(To use a persistent local database, set `USE_MOCK_DB=false`. If using MongoDB Atlas, set `MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority`)*.
 
-### Step 3: Install Required Dependencies
+#### Step 3: Install Required Dependencies
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-### Step 4: Train the Machine Learning Model
-Generate the synthetic training set, fit the Decision Tree, and save model artifacts:
+#### Step 4: Verify & Train the Machine Learning Model
+Generate the synthetic dataset, run 5-fold cross-validation, and verify the Decision Tree:
 ```powershell
 python -m ml.train_model
 ```
-*Expected Output:*
-```text
-INFO:__main__:Generating synthetic training dataset...
-INFO:__main__:Model saved to C:\Users\samik\Desktop\AI_Interview\models\readiness_model.joblib
-INFO:__main__:Metadata saved to C:\Users\samik\Desktop\AI_Interview\models\model_metadata.json
-INFO:__main__:Training Complete. Accuracy: 95.62%, F1-Score: 0.9559
-```
 
-### Step 5: Seed the Interview Question Bank
-Seed initial technical questions into MongoDB:
+#### Step 5: (Optional) Seed Questions into Real MongoDB
+If connected to real MongoDB, seed initial technical questions:
 ```powershell
 python -m database.seed_questions
 ```
-*Expected Output:*
-```text
-INFO:__main__:Seeding complete: 32 inserted, 0 updated. Total questions in database: 32
-```
+*(In Demo Mode, all 32 questions are auto-seeded in memory automatically on startup!)*
 
 ---
 
@@ -571,12 +624,22 @@ Streamlit will initialize the local HTTP server and automatically open your defa
   Local URL: http://localhost:8501
   Network URL: http://192.168.x.x:8501
 ```
+python -m streamlit run app.py
+```
+
+Streamlit will initialize the local HTTP server and automatically open your default browser:
+```text
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.x.x:8501
+```
 
 ---
 
 ## 11. Automated Test Suite
 
-The test suite validates core business logic, input sanitization, math metrics, ML inference, roadmap construction, password security, and system computation across **23 unit tests**:
+The test suite validates core business logic, input sanitization, math metrics, ML inference, cross-validation, classification reports, roadmap construction, password security, administrator authentication, database connection states, scoring rubrics, topic category groupings, and end-to-end in-memory demo mode operations across **42 unit tests**:
 
 ```powershell
 python -m pytest tests/ -v
@@ -587,69 +650,108 @@ python -m pytest tests/ -v
 ============================= test session starts =============================
 platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.7.0
 rootdir: C:\Users\samik\Desktop\AI_Interview
-collected 25 items
+collected 42 items
 
-tests/test_api_fetcher.py::test_classify_question_topic_rules PASSED     [  4%]
-tests/test_api_fetcher.py::test_map_api_difficulty PASSED                [  8%]
-tests/test_assessment.py::test_classify_topic_score PASSED               [ 12%]
-tests/test_assessment.py::test_calculate_assessment_metrics PASSED       [ 16%]
-tests/test_auth.py::test_password_hashing_and_verification PASSED        [ 20%]
-tests/test_auth.py::test_password_salt_uniqueness PASSED                 [ 24%]
-tests/test_auth.py::test_verify_password_malformed_input PASSED          [ 28%]
-tests/test_computation.py::test_role_weighted_score_software_engineer PASSED [ 32%]
-tests/test_computation.py::test_role_weighted_score_data_scientist PASSED [ 36%]
-tests/test_computation.py::test_composite_readiness_index PASSED         [ 40%]
-tests/test_readiness_prediction.py::test_predict_readiness_high_scores PASSED [ 44%]
-tests/test_readiness_prediction.py::test_predict_readiness_low_scores PASSED [ 48%]
-tests/test_readiness_prediction.py::test_predict_readiness_intermediate_scores PASSED [ 52%]
-tests/test_roadmap.py::test_build_roadmap_weak_topics PASSED             [ 56%]
-tests/test_topic_analysis.py::test_topic_rankings_order PASSED           [ 60%]
-tests/test_topic_analysis.py::test_comparison_delta_logic PASSED         [ 64%]
-tests/test_validators.py::test_validate_email_valid PASSED               [ 68%]
-tests/test_validators.py::test_validate_email_invalid PASSED             [ 72%]
-tests/test_validators.py::test_validate_student_profile_success PASSED   [ 76%]
-tests/test_validators.py::test_validate_student_profile_missing_fields PASSED [ 80%]
-tests/test_validators.py::test_validate_scores_valid PASSED              [ 84%]
-tests/test_validators.py::test_validate_scores_out_of_bounds PASSED      [ 88%]
+tests/test_api_fetcher.py::test_classify_question_topic_rules PASSED     [  2%]
+tests/test_api_fetcher.py::test_map_api_difficulty PASSED                [  4%]
+tests/test_assessment.py::test_classify_topic_score PASSED               [  7%]
+tests/test_assessment.py::test_calculate_assessment_metrics PASSED       [  9%]
+tests/test_assessment.py::test_topic_categories_and_descriptions_coverage PASSED [ 11%]
+tests/test_assessment.py::test_score_tier_details_boundaries PASSED      [ 14%]
+tests/test_assessment.py::test_score_level_guide PASSED                  [ 16%]
+tests/test_assessment.py::test_research_data_collection PASSED           [ 19%]
+tests/test_auth.py::test_password_hashing_and_verification PASSED        [ 21%]
+tests/test_auth.py::test_password_salt_uniqueness PASSED                 [ 23%]
+tests/test_auth.py::test_verify_password_malformed_input PASSED          [ 26%]
+tests/test_auth.py::test_admin_authentication_valid PASSED               [ 28%]
+tests/test_auth.py::test_admin_authentication_invalid PASSED             [ 30%]
+tests/test_computation.py::test_role_weighted_score_software_engineer PASSED [ 33%]
+tests/test_computation.py::test_role_weighted_score_data_scientist PASSED [ 35%]
+tests/test_computation.py::test_composite_readiness_index PASSED         [ 38%]
+tests/test_demo_mode_e2e.py::test_demo_mode_auto_seeding PASSED          [ 40%]
+tests/test_demo_mode_e2e.py::test_demo_mode_registration_and_auth PASSED [ 42%]
+tests/test_demo_mode_e2e.py::test_demo_mode_assessment_and_computation PASSED [ 45%]
+tests/test_demo_mode_e2e.py::test_demo_archetypes PASSED                 [ 47%]
+tests/test_readiness_prediction.py::test_predict_readiness_high_scores PASSED [ 50%]
+tests/test_readiness_prediction.py::test_predict_readiness_low_scores PASSED [ 52%]
+tests/test_readiness_prediction.py::test_predict_readiness_intermediate_scores PASSED [ 54%]
+tests/test_readiness_prediction.py::test_ensure_model_initialization PASSED [ 57%]
+tests/test_readiness_prediction.py::test_ensure_model_initialization_when_file_missing PASSED [ 59%]
+tests/test_readiness_prediction.py::test_cross_validation_in_metadata PASSED [ 61%]
+tests/test_readiness_prediction.py::test_per_class_performance_in_metadata PASSED [ 64%]
+tests/test_readiness_prediction.py::test_synthetic_dataset_isolation_file PASSED [ 66%]
+tests/test_readiness_prediction.py::test_academic_demonstration_notice_and_non_guarantee PASSED [ 69%]
+tests/test_roadmap.py::test_build_roadmap_weak_topics PASSED             [ 71%]
+tests/test_topic_analysis.py::test_topic_rankings_order PASSED           [ 73%]
+tests/test_topic_analysis.py::test_comparison_delta_logic PASSED         [ 76%]
+tests/test_validators.py::test_validate_email_valid PASSED               [ 78%]
+tests/test_validators.py::test_validate_email_invalid PASSED             [ 80%]
+tests/test_validators.py::test_validate_student_profile_success PASSED   [ 83%]
+tests/test_validators.py::test_validate_student_profile_missing_fields PASSED [ 85%]
+tests/test_validators.py::test_validate_scores_valid PASSED              [ 88%]
+tests/test_validators.py::test_validate_scores_out_of_bounds PASSED      [ 90%]
 tests/test_validators.py::test_validate_scores_missing_topic PASSED      [ 92%]
-tests/test_validators.py::test_validate_question_valid PASSED            [ 96%]
-tests/test_validators.py::test_validate_question_invalid PASSED          [100%]
+tests/test_validators.py::test_validate_question_valid PASSED            [ 95%]
+tests/test_validators.py::test_validate_question_invalid PASSED          [ 97%]
+tests/test_validators.py::test_database_connection_details PASSED        [100%]
 
-============================= 25 passed in 2.85s ==============================
-```
-tests/test_validators.py::test_validate_email_invalid PASSED             [ 58%]
-tests/test_validators.py::test_validate_student_profile_success PASSED   [ 64%]
-tests/test_validators.py::test_validate_student_profile_missing_fields PASSED [ 70%]
-tests/test_validators.py::test_validate_scores_valid PASSED              [ 76%]
-tests/test_validators.py::test_validate_scores_out_of_bounds PASSED      [ 82%]
-tests/test_validators.py::test_validate_scores_missing_topic PASSED      [ 88%]
-tests/test_validators.py::test_validate_question_valid PASSED            [ 94%]
-tests/test_validators.py::test_validate_question_invalid PASSED          [100%]
-
-============================= 17 passed in 1.76s ==============================
+============================= 42 passed in 2.33s ==============================
 ```
 
 ---
 
-## 12. Troubleshooting & Windows Security Guidelines
+## 12. Troubleshooting & Database Diagnostics
 
-### 1. `Program 'streamlit.exe' failed to run: An Application Control policy has blocked this file`
+### 1. MongoDB Connection Offline (Beginner Guide)
+- **Symptom:** The sidebar shows `🔴 Real MongoDB: Disconnected` or the main screen displays the **Database Offline** guide.
+- **Explanation:** The application is configured to connect to your real, persistent database (`USE_MOCK_DB=false`), but the MongoDB service is not currently running on your machine.
+- **Resolution by Operating System:**
+
+  #### Windows
+  Open PowerShell as Administrator and run:
+  ```powershell
+  net start MongoDB
+  ```
+  Or start the service via Windows Services (`services.msc` -> find `MongoDB Server` -> click *Start*).
+
+  #### macOS
+  Open Terminal and run:
+  ```bash
+  brew services start mongodb-community
+  ```
+
+  #### Linux (Ubuntu / Debian)
+  Open Terminal and run:
+  ```bash
+  sudo systemctl start mongod
+  sudo systemctl status mongod
+  ```
+
+  #### Cloud MongoDB Atlas (Free Cluster)
+  If you do not wish to run a local daemon, paste your MongoDB Atlas URI into `.env`:
+  ```ini
+  MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority
+  USE_MOCK_DB=false
+  ```
+
+### 2. Presentation / Demo Mode Option
+- **Use Case:** You are giving a viva, class demonstration, or grading presentation on a computer without MongoDB installed.
+- **Resolution:**
+  * Click the prominent **`🚀 Launch in Presentation / Demo Mode`** button directly from the offline screen or sidebar.
+  * Or edit `.env` and set:
+    ```ini
+    DEMO_MODE=true
+    USE_MOCK_DB=true
+    ```
+  * *Note:* In Demo Mode, all features and modules are fully functional, but data is kept in-memory and will not persist once the application terminates.
+
+### 3. Windows Defender / Smart App Control Blocking `.exe`
 - **Cause:** Windows Defender Application Control (WDAC) or Windows 11 Smart App Control blocks newly created, unsigned `.exe` wrapper binaries located inside user profile paths (`venv\Scripts\streamlit.exe`).
-- **Solution:** Execute Streamlit directly via the Microsoft-signed Python interpreter module flag:
+- **Solution:** Execute Streamlit and Pytest directly via the Microsoft-signed Python interpreter module flag:
   ```powershell
   python -m streamlit run app.py
+  python -m pytest tests/ -v
   ```
-
-### 2. OpenCode CLI Command Not Recognized in Command Prompt
-- **Cause:** Command Prompt (CMD) caches environment variables at launch time and will not detect newly installed PATH modifications until reopened.
-- **Solution:** Open a new Command Prompt or run the included workspace launcher:
-  ```cmd
-  opencode --version
-  ```
-
-### 3. MongoDB Connection Timeout
-- **Diagnosis:** If local MongoDB is not running, the application logs a warning and automatically activates the in-memory `mongomock` engine. All modules remain interactive.
-- **Fix:** Start your local service (`net start MongoDB`) or supply a free cloud MongoDB Atlas cluster URI in `.env`.
 
 ---
 
